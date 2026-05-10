@@ -1,0 +1,2 @@
+-- Placeholder migration to align local history with remote migration version 20260510010134.
+-- Intentionally empty.

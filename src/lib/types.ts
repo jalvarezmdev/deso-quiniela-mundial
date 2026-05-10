@@ -16,13 +16,13 @@ export type Team = {
 
 export type User = {
   id: string
-  email: string
+  email: string | null
   nickname: string
   teamId: string
-  pinHash: string
   isAdmin: boolean
   onboardingCompleted: boolean
   createdAt: string
+  lastLoginAt?: string | null
 }
 
 export type Match = {
@@ -37,6 +37,8 @@ export type Match = {
   awayGoals: number | null
   qualifiedTeamId: string | null
   manualOverride: boolean
+  source?: string
+  externalMatchRef?: string | null
 }
 
 export type Prediction = {

@@ -13,7 +13,7 @@ export const Route = createFileRoute('/onboarding')({
 const slides = [
   {
     title: 'Reglas por fases',
-    text: 'Solo puedes editar la fase activa. Cada fase se abre segun calendario y se bloquea al iniciar el primer partido.',
+    text: 'La quiniela arranca en fase de grupos. Solo puedes editar la fase activa y el flujo avanza en orden por rondas. Cada fase se bloquea al iniciar su primer partido.',
   },
   {
     title: 'Puntaje',
@@ -29,6 +29,8 @@ function OnboardingPage() {
   const { currentUser, completeOnboarding } = useApp()
   const navigate = useNavigate()
   const [index, setIndex] = useState(0)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
   if (!currentUser) {
     return <Navigate to="/ingreso" />
@@ -66,15 +68,24 @@ function OnboardingPage() {
             ) : (
               <Button
                 type="button"
-                onClick={() => {
-                  completeOnboarding()
+                onClick={async () => {
+                  setNotice(null)
+                  setSaving(true)
+                  const result = await completeOnboarding()
+                  setSaving(false)
+                  if (!result.ok) {
+                    setNotice(result.message)
+                    return
+                  }
                   navigate({ to: '/' })
                 }}
+                disabled={saving}
               >
-                Entendido
+                {saving ? 'Guardando...' : 'Entendido'}
               </Button>
             )}
           </div>
+          {notice ? <p className="mt-4 text-sm text-red-700">{notice}</p> : null}
         </Card>
       </PageShell>
     </RequireAuth>

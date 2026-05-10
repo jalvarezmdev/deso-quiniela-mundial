@@ -2,14 +2,34 @@
 -- Apply with Supabase SQL editor or migration tooling.
 
 create table if not exists public.profiles (
-  id uuid primary key,
-  email text not null unique,
-  nickname text not null unique,
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  nickname text not null,
   team_id text not null,
   pin_hash text not null,
   is_admin boolean not null default false,
   onboarding_completed boolean not null default false,
-  created_at timestamptz not null default now()
+  token_version integer not null default 1,
+  last_login_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
+create unique index if not exists ux_profiles_email_active
+on public.profiles(lower(email))
+where deleted_at is null;
+
+create unique index if not exists ux_profiles_nickname_active
+on public.profiles(lower(nickname))
+where deleted_at is null;
+
+create table if not exists public.teams (
+  id text primary key,
+  name text not null,
+  flag text not null,
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
 );
 
 create table if not exists public.matches (
@@ -24,7 +44,49 @@ create table if not exists public.matches (
   away_goals int,
   qualified_team_id text,
   manual_override boolean not null default false,
-  updated_at timestamptz not null default now()
+  source text not null default 'manual',
+  external_match_ref text,
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  constraint chk_matches_status
+    check (status in ('scheduled', 'live', 'final')),
+  constraint chk_matches_team_distinct
+    check (home_team_id <> away_team_id),
+  constraint chk_matches_score_nonnegative
+    check (
+      (home_goals is null or home_goals >= 0) and
+      (away_goals is null or away_goals >= 0)
+    ),
+  constraint chk_matches_qualified_in_match
+    check (
+      qualified_team_id is null or
+      qualified_team_id = home_team_id or
+      qualified_team_id = away_team_id
+    ),
+  constraint chk_matches_scheduled_clean
+    check (
+      status <> 'scheduled' or
+      (home_goals is null and away_goals is null and qualified_team_id is null)
+    ),
+  constraint chk_matches_live_or_final_has_scores
+    check (
+      status = 'scheduled' or
+      (home_goals is not null and away_goals is not null)
+    ),
+  constraint chk_matches_groups_without_qualified
+    check (
+      phase <> 'groups' or qualified_team_id is null
+    ),
+  constraint chk_matches_knockout_final_requires_qualified
+    check (
+      not (phase <> 'groups' and status = 'final' and qualified_team_id is null)
+    ),
+  constraint fk_matches_home_team
+    foreign key (home_team_id) references public.teams(id),
+  constraint fk_matches_away_team
+    foreign key (away_team_id) references public.teams(id),
+  constraint fk_matches_qualified_team
+    foreign key (qualified_team_id) references public.teams(id)
 );
 
 create table if not exists public.predictions (
@@ -35,6 +97,12 @@ create table if not exists public.predictions (
   away_goals int not null,
   predicted_qualified_team_id text,
   updated_at timestamptz not null default now(),
+  constraint fk_predictions_qualified_team
+    foreign key (predicted_qualified_team_id) references public.teams(id),
+  constraint chk_predictions_groups_without_qualified
+    check (
+      phase <> 'groups' or predicted_qualified_team_id is null
+    ),
   primary key(user_id, phase, match_id)
 );
 
@@ -49,22 +117,47 @@ create table if not exists public.phase_submissions (
 create table if not exists public.phase_window_overrides (
   phase text primary key,
   opens_at timestamptz not null,
-  closes_at timestamptz not null
+  closes_at timestamptz not null,
+  deleted_at timestamptz
 );
 
 create index if not exists idx_matches_phase_kickoff on public.matches(phase, kickoff_at);
 create index if not exists idx_matches_status on public.matches(status);
+create index if not exists idx_matches_phase_kickoff_active
+on public.matches(phase, kickoff_at)
+where deleted_at is null;
+create index if not exists idx_matches_status_active
+on public.matches(status)
+where deleted_at is null;
+create unique index if not exists ux_matches_source_external_active
+on public.matches(source, external_match_ref)
+where deleted_at is null and external_match_ref is not null;
 create index if not exists idx_predictions_user on public.predictions(user_id);
+create index if not exists idx_phase_window_overrides_active
+on public.phase_window_overrides(phase)
+where deleted_at is null;
+create index if not exists idx_teams_active
+on public.teams(id)
+where deleted_at is null;
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_profiles_set_updated_at on public.profiles;
+create trigger trg_profiles_set_updated_at
+before update on public.profiles
+for each row
+execute function public.set_updated_at();
 
 alter table public.profiles enable row level security;
 alter table public.predictions enable row level security;
 alter table public.phase_submissions enable row level security;
-
-create policy if not exists profiles_self_read on public.profiles
-for select using (auth.uid() = id);
-
-create policy if not exists profiles_self_write on public.profiles
-for update using (auth.uid() = id);
 
 create policy if not exists predictions_owner_rw on public.predictions
 for all using (auth.uid() = user_id)

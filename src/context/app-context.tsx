@@ -7,8 +7,28 @@ import {
   useState,
 } from 'react'
 import { computeMatchPoints } from '#/lib/game'
+import {
+  invokeAdminQuinielasAction,
+  invokeQuinielasAction,
+  type ListMatchesResultDTO,
+  type MatchDTO,
+} from '#/lib/quinielas-api'
+import {
+  invokeUsersAction,
+  type AdminMutationResultDTO,
+  type AdminUserDTO,
+  type BasicUserDTO,
+  type SessionUserDTO,
+} from '#/lib/users-api'
 import { nowIso } from '#/lib/time'
 import { getTeam } from '#/lib/teams'
+import {
+  PHASE_ORDER,
+  getActivePhase,
+  getPhaseWindow,
+  isPhaseEditable,
+  isPhaseLocked,
+} from '#/lib/phase-flow'
 import {
   PHASES,
   type AppState,
@@ -21,115 +41,13 @@ import {
 } from '#/lib/types'
 
 const STORAGE_KEY = 'quiniela_state_v1'
-const SESSION_KEY = 'quiniela_session_user_v1'
+const SESSION_TOKEN_KEY = 'quiniela_session_token_v1'
 const HYDRATION_SAFE_NOW_ISO = '2026-01-01T00:00:00.000Z'
 
-const PHASE_ORDER: PhaseKey[] = PHASES.map((phase) => phase.key)
-const MS_DAY = 24 * 60 * 60 * 1000
 const MS_MATCH_WINDOW = 2 * 60 * 60 * 1000
-
-function hashPin(pin: string): string {
-  let hash = 0
-  for (let i = 0; i < pin.length; i += 1) {
-    hash = (hash << 5) - hash + pin.charCodeAt(i)
-    hash |= 0
-  }
-  return `p-${Math.abs(hash).toString(36)}`
-}
 
 function isPinValid(pin: string): boolean {
   return /^\d{6}$/.test(pin)
-}
-
-function findPhaseIndex(phase: PhaseKey): number {
-  return PHASE_ORDER.indexOf(phase)
-}
-
-function getMatchesByPhase(matches: Match[], phase: PhaseKey): Match[] {
-  return matches.filter((match) => match.phase === phase)
-}
-
-function getPhaseFirstKickoff(matches: Match[], phase: PhaseKey): Date {
-  const phaseMatches = getMatchesByPhase(matches, phase)
-  const sorted = [...phaseMatches].sort(
-    (a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime(),
-  )
-
-  return new Date(sorted[0]?.kickoffAt ?? nowIso())
-}
-
-function getPreviousPhase(phase: PhaseKey): PhaseKey | null {
-  const index = findPhaseIndex(phase)
-  if (index <= 0) return null
-  return PHASE_ORDER[index - 1] ?? null
-}
-
-function isPhaseResultsComplete(matches: Match[], phase: PhaseKey): boolean {
-  const phaseMatches = getMatchesByPhase(matches, phase)
-  if (phaseMatches.length === 0) return false
-  return phaseMatches.every((match) => match.status === 'final')
-}
-
-function getPhaseWindow(state: AppState, phase: PhaseKey): { opensAt: Date; closesAt: Date } {
-  const override = state.windowOverrides.find((item) => item.phase === phase)
-  const closesAt = override
-    ? new Date(override.closesAt)
-    : getPhaseFirstKickoff(state.matches, phase)
-
-  if (override) {
-    return {
-      opensAt: new Date(override.opensAt),
-      closesAt,
-    }
-  }
-
-  if (phase === 'groups') {
-    return {
-      opensAt: new Date(closesAt.getTime() - 7 * MS_DAY),
-      closesAt,
-    }
-  }
-
-  const previousPhase = getPreviousPhase(phase)
-  if (!previousPhase) {
-    return {
-      opensAt: new Date(closesAt.getTime() - 2 * MS_DAY),
-      closesAt,
-    }
-  }
-
-  const prevPhaseMatches = getMatchesByPhase(state.matches, previousPhase)
-  const maxKickoff = Math.max(
-    ...prevPhaseMatches.map((match) => new Date(match.kickoffAt).getTime()),
-  )
-
-  return {
-    opensAt: new Date(maxKickoff + MS_MATCH_WINDOW),
-    closesAt,
-  }
-}
-
-function isPhaseLocked(state: AppState, phase: PhaseKey, now: Date): boolean {
-  const { closesAt } = getPhaseWindow(state, phase)
-  return now.getTime() >= closesAt.getTime()
-}
-
-function isPhaseOpen(state: AppState, phase: PhaseKey, now: Date): boolean {
-  const previous = getPreviousPhase(phase)
-  const previousDone = previous ? isPhaseResultsComplete(state.matches, previous) : true
-
-  const { opensAt } = getPhaseWindow(state, phase)
-  return previousDone && now.getTime() >= opensAt.getTime() && !isPhaseLocked(state, phase, now)
-}
-
-function getActivePhase(state: AppState, now: Date): PhaseKey {
-  for (const phase of PHASE_ORDER) {
-    if (isPhaseOpen(state, phase, now)) {
-      return phase
-    }
-  }
-
-  return 'final'
 }
 
 function wasPhaseConfirmed(submissions: PhaseSubmission[], userId: string, phase: PhaseKey): boolean {
@@ -139,11 +57,11 @@ function wasPhaseConfirmed(submissions: PhaseSubmission[], userId: string, phase
 function defaultMatches(): Match[] {
   return [
     {
-      id: 'g-1',
+      id: 'ga-1',
       phase: 'groups',
       groupName: 'Grupo A',
       homeTeamId: 'mex',
-      awayTeamId: 'sui',
+      awayTeamId: 'zaf',
       kickoffAt: '2026-06-11T17:00:00.000Z',
       status: 'scheduled',
       homeGoals: null,
@@ -152,12 +70,12 @@ function defaultMatches(): Match[] {
       manualOverride: false,
     },
     {
-      id: 'g-2',
+      id: 'ga-2',
       phase: 'groups',
       groupName: 'Grupo A',
-      homeTeamId: 'arg',
-      awayTeamId: 'jpn',
-      kickoffAt: '2026-06-12T00:00:00.000Z',
+      homeTeamId: 'kor',
+      awayTeamId: 'cze',
+      kickoffAt: '2026-06-11T20:00:00.000Z',
       status: 'scheduled',
       homeGoals: null,
       awayGoals: null,
@@ -165,11 +83,63 @@ function defaultMatches(): Match[] {
       manualOverride: false,
     },
     {
-      id: 'g-3',
+      id: 'ga-3',
+      phase: 'groups',
+      groupName: 'Grupo A',
+      homeTeamId: 'mex',
+      awayTeamId: 'kor',
+      kickoffAt: '2026-06-18T17:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'ga-4',
+      phase: 'groups',
+      groupName: 'Grupo A',
+      homeTeamId: 'cze',
+      awayTeamId: 'zaf',
+      kickoffAt: '2026-06-18T20:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'ga-5',
+      phase: 'groups',
+      groupName: 'Grupo A',
+      homeTeamId: 'cze',
+      awayTeamId: 'mex',
+      kickoffAt: '2026-06-24T17:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'ga-6',
+      phase: 'groups',
+      groupName: 'Grupo A',
+      homeTeamId: 'zaf',
+      awayTeamId: 'kor',
+      kickoffAt: '2026-06-24T20:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gb-1',
       phase: 'groups',
       groupName: 'Grupo B',
-      homeTeamId: 'eng',
-      awayTeamId: 'usa',
+      homeTeamId: 'can',
+      awayTeamId: 'bih',
       kickoffAt: '2026-06-12T17:00:00.000Z',
       status: 'scheduled',
       homeGoals: null,
@@ -178,12 +148,220 @@ function defaultMatches(): Match[] {
       manualOverride: false,
     },
     {
-      id: 'g-4',
+      id: 'gb-2',
       phase: 'groups',
       groupName: 'Grupo B',
+      homeTeamId: 'qat',
+      awayTeamId: 'sui',
+      kickoffAt: '2026-06-13T20:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gb-3',
+      phase: 'groups',
+      groupName: 'Grupo B',
+      homeTeamId: 'can',
+      awayTeamId: 'qat',
+      kickoffAt: '2026-06-18T21:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gb-4',
+      phase: 'groups',
+      groupName: 'Grupo B',
+      homeTeamId: 'sui',
+      awayTeamId: 'bih',
+      kickoffAt: '2026-06-18T23:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gb-5',
+      phase: 'groups',
+      groupName: 'Grupo B',
+      homeTeamId: 'sui',
+      awayTeamId: 'can',
+      kickoffAt: '2026-06-24T17:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gb-6',
+      phase: 'groups',
+      groupName: 'Grupo B',
+      homeTeamId: 'bih',
+      awayTeamId: 'qat',
+      kickoffAt: '2026-06-24T20:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gc-1',
+      phase: 'groups',
+      groupName: 'Grupo C',
       homeTeamId: 'bra',
-      awayTeamId: 'sen',
-      kickoffAt: '2026-06-13T00:00:00.000Z',
+      awayTeamId: 'mar',
+      kickoffAt: '2026-06-13T17:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gc-2',
+      phase: 'groups',
+      groupName: 'Grupo C',
+      homeTeamId: 'hai',
+      awayTeamId: 'sco',
+      kickoffAt: '2026-06-13T20:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gc-3',
+      phase: 'groups',
+      groupName: 'Grupo C',
+      homeTeamId: 'bra',
+      awayTeamId: 'hai',
+      kickoffAt: '2026-06-19T17:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gc-4',
+      phase: 'groups',
+      groupName: 'Grupo C',
+      homeTeamId: 'sco',
+      awayTeamId: 'mar',
+      kickoffAt: '2026-06-19T20:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gc-5',
+      phase: 'groups',
+      groupName: 'Grupo C',
+      homeTeamId: 'sco',
+      awayTeamId: 'bra',
+      kickoffAt: '2026-06-24T21:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gc-6',
+      phase: 'groups',
+      groupName: 'Grupo C',
+      homeTeamId: 'mar',
+      awayTeamId: 'hai',
+      kickoffAt: '2026-06-24T23:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gd-1',
+      phase: 'groups',
+      groupName: 'Grupo D',
+      homeTeamId: 'usa',
+      awayTeamId: 'par',
+      kickoffAt: '2026-06-12T20:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gd-2',
+      phase: 'groups',
+      groupName: 'Grupo D',
+      homeTeamId: 'aus',
+      awayTeamId: 'tur',
+      kickoffAt: '2026-06-13T23:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gd-3',
+      phase: 'groups',
+      groupName: 'Grupo D',
+      homeTeamId: 'usa',
+      awayTeamId: 'aus',
+      kickoffAt: '2026-06-19T21:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gd-4',
+      phase: 'groups',
+      groupName: 'Grupo D',
+      homeTeamId: 'tur',
+      awayTeamId: 'par',
+      kickoffAt: '2026-06-19T23:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gd-5',
+      phase: 'groups',
+      groupName: 'Grupo D',
+      homeTeamId: 'tur',
+      awayTeamId: 'usa',
+      kickoffAt: '2026-06-25T20:00:00.000Z',
+      status: 'scheduled',
+      homeGoals: null,
+      awayGoals: null,
+      qualifiedTeamId: null,
+      manualOverride: false,
+    },
+    {
+      id: 'gd-6',
+      phase: 'groups',
+      groupName: 'Grupo D',
+      homeTeamId: 'par',
+      awayTeamId: 'aus',
+      kickoffAt: '2026-06-25T23:00:00.000Z',
       status: 'scheduled',
       homeGoals: null,
       awayGoals: null,
@@ -293,25 +471,48 @@ function persistState(state: AppState) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 }
 
-function readSessionUserId(): string | null {
+function mapMatchDTO(match: MatchDTO): Match {
+  return {
+    id: match.id,
+    phase: match.phase,
+    groupName: match.groupName,
+    homeTeamId: match.homeTeamId,
+    awayTeamId: match.awayTeamId,
+    kickoffAt: match.kickoffAt,
+    status: match.status,
+    homeGoals: match.homeGoals,
+    awayGoals: match.awayGoals,
+    qualifiedTeamId: match.qualifiedTeamId,
+    manualOverride: match.manualOverride,
+    source: match.source,
+    externalMatchRef: match.externalMatchRef,
+  }
+}
+
+function mergeMatches(currentMatches: Match[], matchesFromDb: MatchDTO[]): Match[] {
+  const sanitizedMatches = matchesFromDb.map(mapMatchDTO)
+  return sanitizedMatches.length > 0 ? sanitizedMatches : currentMatches
+}
+
+function readSessionToken(): string | null {
   if (typeof window === 'undefined') {
     return null
   }
 
-  return window.localStorage.getItem(SESSION_KEY)
+  return window.localStorage.getItem(SESSION_TOKEN_KEY)
 }
 
-function persistSessionUserId(userId: string | null) {
+function persistSessionToken(sessionToken: string | null) {
   if (typeof window === 'undefined') {
     return
   }
 
-  if (!userId) {
-    window.localStorage.removeItem(SESSION_KEY)
+  if (!sessionToken) {
+    window.localStorage.removeItem(SESSION_TOKEN_KEY)
     return
   }
 
-  window.localStorage.setItem(SESSION_KEY, userId)
+  window.localStorage.setItem(SESSION_TOKEN_KEY, sessionToken)
 }
 
 function applyAutomaticLiveStatus(state: AppState): AppState {
@@ -385,6 +586,15 @@ function applyAutoConfirm(state: AppState): AppState {
   }
 }
 
+function hasScorableFinalOutcome(
+  match: Match,
+): match is Match & { status: 'final'; homeGoals: number; awayGoals: number } {
+  if (match.status !== 'final') return false
+  if (match.homeGoals == null || match.awayGoals == null) return false
+  if (match.phase !== 'groups' && !match.qualifiedTeamId) return false
+  return true
+}
+
 function calculateLeaderboard(state: AppState): LeaderboardRow[] {
   const rows: LeaderboardRow[] = state.users.map((user) => {
     const userPredictions = state.predictions.filter((prediction) => prediction.userId === user.id)
@@ -395,7 +605,7 @@ function calculateLeaderboard(state: AppState): LeaderboardRow[] {
 
     for (const prediction of userPredictions) {
       const match = state.matches.find((item) => item.id === prediction.matchId)
-      if (!match || match.status !== 'final') {
+      if (!match || !hasScorableFinalOutcome(match)) {
         continue
       }
 
@@ -407,8 +617,8 @@ function calculateLeaderboard(state: AppState): LeaderboardRow[] {
       const gained = computeMatchPoints(
         {
           phase: match.phase,
-          homeGoals: match.homeGoals ?? 0,
-          awayGoals: match.awayGoals ?? 0,
+          homeGoals: match.homeGoals,
+          awayGoals: match.awayGoals,
           qualifiedTeamId: match.qualifiedTeamId,
         },
         {
@@ -450,6 +660,49 @@ function calculateLeaderboard(state: AppState): LeaderboardRow[] {
   })
 }
 
+function mapSessionUser(user: SessionUserDTO): User {
+  return {
+    id: user.id,
+    email: user.email,
+    nickname: user.nickname,
+    teamId: user.teamId,
+    isAdmin: user.isAdmin,
+    onboardingCompleted: user.onboardingCompleted,
+    createdAt: user.createdAt,
+    lastLoginAt: user.lastLoginAt,
+  }
+}
+
+function mapBasicUser(user: BasicUserDTO): User {
+  return {
+    id: user.id,
+    email: null,
+    nickname: user.nickname,
+    teamId: user.teamId,
+    isAdmin: false,
+    onboardingCompleted: user.onboardingCompleted,
+    createdAt: user.createdAt,
+    lastLoginAt: null,
+  }
+}
+
+function mapAdminUser(user: AdminUserDTO): User {
+  return {
+    id: user.id,
+    email: user.email,
+    nickname: user.nickname,
+    teamId: user.teamId,
+    isAdmin: user.isAdmin,
+    onboardingCompleted: user.onboardingCompleted,
+    createdAt: user.createdAt,
+    lastLoginAt: user.lastLoginAt,
+  }
+}
+
+function formatUsersError(message: string): { ok: false; message: string } {
+  return { ok: false, message }
+}
+
 type RegisterInput = {
   email: string
   nickname: string
@@ -473,11 +726,13 @@ type SavePredictionInput = {
 
 type SetResultInput = {
   matchId: string
-  homeGoals: number
-  awayGoals: number
+  homeGoals: number | null
+  awayGoals: number | null
   qualifiedTeamId: string | null
-  status: 'live' | 'final'
+  status: 'scheduled' | 'live' | 'final'
 }
+
+type ActionResult = { ok: true } | { ok: false; message: string }
 
 type AppContextValue = {
   ready: boolean
@@ -486,17 +741,21 @@ type AppContextValue = {
   teamsById: Record<string, string>
   activePhase: PhaseKey
   leaderboard: LeaderboardRow[]
-  login: (payload: LoginInput) => { ok: true } | { ok: false; message: string }
-  register: (payload: RegisterInput) => { ok: true } | { ok: false; message: string }
+  sessionToken: string | null
+  login: (payload: LoginInput) => Promise<ActionResult>
+  register: (payload: RegisterInput) => Promise<ActionResult>
   logout: () => void
-  completeOnboarding: () => void
+  completeOnboarding: () => Promise<ActionResult>
   savePrediction: (payload: SavePredictionInput) => { ok: true } | { ok: false; message: string }
   confirmPhase: (phase: PhaseKey) => { ok: true } | { ok: false; message: string }
   refreshLive: () => void
-  setMatchResult: (payload: SetResultInput) => { ok: true } | { ok: false; message: string }
+  setMatchResult: (payload: SetResultInput) => Promise<ActionResult>
   setPhaseOverride: (phase: PhaseKey, opensAt: string, closesAt: string) => void
-  resetUserPin: (userId: string, newPin: string) => { ok: true } | { ok: false; message: string }
+  resetUserPin: (userId: string, newPin: string) => Promise<ActionResult>
+  softDeleteUser: (userId: string) => Promise<ActionResult>
+  refreshUsers: () => Promise<void>
   canEditPhase: (phase: PhaseKey) => boolean
+  isPhaseEditableAtNow: (phase: PhaseKey) => boolean
   isPhaseConfirmed: (phase: PhaseKey) => boolean
   isPhaseLockedAtNow: (phase: PhaseKey) => boolean
   getPhaseWindowAtNow: (phase: PhaseKey) => { opensAt: Date; closesAt: Date }
@@ -507,14 +766,89 @@ const AppContext = createContext<AppContextValue | null>(null)
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
   const [state, setState] = useState<AppState>(buildInitialState)
-  const [sessionUserId, setSessionUserId] = useState<string | null>(null)
+  const [sessionToken, setSessionToken] = useState<string | null>(null)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
+
+  const refreshUsersWithSession = useCallback(async (token: string, isAdmin: boolean) => {
+    if (isAdmin) {
+      const adminListResponse = await invokeUsersAction<
+        { sessionToken: string },
+        { users: AdminUserDTO[] }
+      >('list_admin', { sessionToken: token })
+
+      if (!adminListResponse.ok) {
+        return
+      }
+
+      setState((prev) => applyAutoConfirm({ ...prev, users: adminListResponse.data.users.map(mapAdminUser) }))
+      return
+    }
+
+    const basicListResponse = await invokeUsersAction<
+      { sessionToken: string },
+      { users: BasicUserDTO[] }
+    >('list_basic', { sessionToken: token })
+
+    if (!basicListResponse.ok) {
+      return
+    }
+
+    setState((prev) => applyAutoConfirm({ ...prev, users: basicListResponse.data.users.map(mapBasicUser) }))
+  }, [])
 
   useEffect(() => {
-    const loaded = applyAutoConfirm(readState())
-    setState(loaded)
-    setSessionUserId(readSessionUserId())
-    setReady(true)
-  }, [])
+    let cancelled = false
+
+    async function bootstrap() {
+      let loaded = applyAutoConfirm(readState())
+
+      const matchesResponse = await invokeQuinielasAction<{ limit: number }, ListMatchesResultDTO>('list_matches', {
+        limit: 256,
+      })
+
+      if (matchesResponse.ok) {
+        loaded = {
+          ...loaded,
+          matches: mergeMatches(loaded.matches, matchesResponse.data.matches),
+        }
+      }
+
+      if (cancelled) return
+      setState(loaded)
+
+      const storedToken = readSessionToken()
+      if (!storedToken) {
+        setReady(true)
+        return
+      }
+
+      const meResponse = await invokeUsersAction<{ sessionToken: string }, { user: SessionUserDTO }>('me', {
+        sessionToken: storedToken,
+      })
+
+      if (cancelled) return
+
+      if (!meResponse.ok) {
+        setSessionToken(null)
+        setCurrentUser(null)
+        setReady(true)
+        return
+      }
+
+      const meUser = mapSessionUser(meResponse.data.user)
+      setSessionToken(storedToken)
+      setCurrentUser(meUser)
+      await refreshUsersWithSession(storedToken, meUser.isAdmin)
+      if (cancelled) return
+      setReady(true)
+    }
+
+    void bootstrap()
+
+    return () => {
+      cancelled = true
+    }
+  }, [refreshUsersWithSession])
 
   useEffect(() => {
     if (!ready) return
@@ -523,13 +857,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!ready) return
-    persistSessionUserId(sessionUserId)
-  }, [ready, sessionUserId])
-
-  const currentUser = useMemo(
-    () => state.users.find((user) => user.id === sessionUserId) ?? null,
-    [sessionUserId, state.users],
-  )
+    persistSessionToken(sessionToken)
+  }, [ready, sessionToken])
 
   const activePhase = useMemo(() => {
     const now = ready ? new Date() : new Date(HYDRATION_SAFE_NOW_ISO)
@@ -546,105 +875,126 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return output
   }, [state.users])
 
-  const register = useCallback((payload: RegisterInput) => {
+  const refreshUsers = useCallback(async () => {
+    if (!sessionToken || !currentUser) {
+      return
+    }
+    await refreshUsersWithSession(sessionToken, currentUser.isAdmin)
+  }, [currentUser, refreshUsersWithSession, sessionToken])
+
+  const isPhaseEditableAtNow = useCallback((phase: PhaseKey) => {
+    if (!ready) return false
+    return isPhaseEditable(state, phase, new Date())
+  }, [ready, state])
+
+  const register = useCallback(async (payload: RegisterInput): Promise<ActionResult> => {
     const email = payload.email.trim().toLowerCase()
     const nickname = payload.nickname.trim()
     const teamId = payload.teamId
-    const expectedSecret = (import.meta.env.VITE_REGISTRATION_SECRET ?? 'esto desocupao')
-      .trim()
-      .toLowerCase()
 
     if (!email || !nickname || !teamId) {
-      return { ok: false as const, message: 'Todos los campos son obligatorios.' }
+      return formatUsersError('Todos los campos son obligatorios.')
     }
 
     if (!isPinValid(payload.pin)) {
-      return { ok: false as const, message: 'El PIN debe tener 6 digitos numericos.' }
+      return formatUsersError('El PIN debe tener 6 digitos numericos.')
     }
 
-    if (payload.secretPhrase.trim().toLowerCase() !== expectedSecret) {
-      return { ok: false as const, message: 'Palabra secreta invalida.' }
-    }
-
-    if (state.users.some((user) => user.email === email)) {
-      return { ok: false as const, message: 'Ese correo ya esta registrado.' }
-    }
-
-    if (state.users.some((user) => user.nickname.toLowerCase() === nickname.toLowerCase())) {
-      return { ok: false as const, message: 'Ese apodo ya esta registrado.' }
-    }
-
-    const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS ?? '')
-      .split(',')
-      .map((item) => item.trim().toLowerCase())
-      .filter(Boolean)
-
-    const user: User = {
-      id: crypto.randomUUID(),
+    const registerResponse = await invokeUsersAction<
+      RegisterInput,
+      { sessionToken: string; user: SessionUserDTO }
+    >('register', {
       email,
       nickname,
       teamId,
-      pinHash: hashPin(payload.pin),
-      isAdmin: adminEmails.includes(email),
-      onboardingCompleted: false,
-      createdAt: nowIso(),
+      pin: payload.pin,
+      secretPhrase: payload.secretPhrase,
+    })
+
+    if (!registerResponse.ok) {
+      return formatUsersError(registerResponse.error.message)
     }
 
-    setState((prev) => ({
-      ...prev,
-      users: [...prev.users, user],
-    }))
-    setSessionUserId(user.id)
+    const signedUser = mapSessionUser(registerResponse.data.user)
+    setSessionToken(registerResponse.data.sessionToken)
+    setCurrentUser(signedUser)
+    await refreshUsersWithSession(registerResponse.data.sessionToken, signedUser.isAdmin)
 
-    return { ok: true as const }
-  }, [state.users])
+    return { ok: true }
+  }, [refreshUsersWithSession])
 
-  const login = useCallback((payload: LoginInput) => {
-    const email = payload.email.trim().toLowerCase()
-    const user = state.users.find((candidate) => candidate.email === email)
-
-    if (!user) {
-      return { ok: false as const, message: 'No existe un usuario con ese correo.' }
-    }
-
+  const login = useCallback(async (payload: LoginInput): Promise<ActionResult> => {
     if (!isPinValid(payload.pin)) {
-      return { ok: false as const, message: 'PIN invalido.' }
+      return formatUsersError('PIN invalido.')
     }
 
-    if (user.pinHash !== hashPin(payload.pin)) {
-      return { ok: false as const, message: 'PIN incorrecto.' }
+    const loginResponse = await invokeUsersAction<LoginInput, { sessionToken: string; user: SessionUserDTO }>(
+      'login',
+      {
+        email: payload.email.trim().toLowerCase(),
+        pin: payload.pin,
+      },
+    )
+
+    if (!loginResponse.ok) {
+      return formatUsersError(loginResponse.error.message)
     }
 
-    setSessionUserId(user.id)
-    return { ok: true as const }
-  }, [state.users])
+    const signedUser = mapSessionUser(loginResponse.data.user)
+    setSessionToken(loginResponse.data.sessionToken)
+    setCurrentUser(signedUser)
+    await refreshUsersWithSession(loginResponse.data.sessionToken, signedUser.isAdmin)
+    return { ok: true }
+  }, [refreshUsersWithSession])
 
   const logout = useCallback(() => {
-    setSessionUserId(null)
+    setSessionToken(null)
+    setCurrentUser(null)
   }, [])
 
-  const completeOnboarding = useCallback(() => {
-    if (!currentUser) return
+  const completeOnboarding = useCallback(async (): Promise<ActionResult> => {
+    if (!currentUser || !sessionToken) {
+      return formatUsersError('Debes iniciar sesion.')
+    }
 
+    const updateResponse = await invokeUsersAction<
+      { sessionToken: string; onboardingCompleted: boolean },
+      { user: SessionUserDTO }
+    >('update_me', {
+      sessionToken,
+      onboardingCompleted: true,
+    })
+
+    if (!updateResponse.ok) {
+      return formatUsersError(updateResponse.error.message)
+    }
+
+    const updated = mapSessionUser(updateResponse.data.user)
+    setCurrentUser(updated)
     setState((prev) => ({
       ...prev,
       users: prev.users.map((user) =>
-        user.id === currentUser.id
+        user.id === updated.id
           ? {
               ...user,
-              onboardingCompleted: true,
+              nickname: updated.nickname,
+              teamId: updated.teamId,
+              onboardingCompleted: updated.onboardingCompleted,
+              email: updated.email,
+              isAdmin: updated.isAdmin,
+              lastLoginAt: updated.lastLoginAt,
             }
           : user,
       ),
     }))
-  }, [currentUser])
+
+    return { ok: true }
+  }, [currentUser, sessionToken])
 
   const canEditPhase = useCallback((phase: PhaseKey) => {
     if (!ready || !currentUser) return false
 
-    const now = new Date()
-
-    if (phase !== getActivePhase(state, now)) {
+    if (phase !== activePhase) {
       return false
     }
 
@@ -652,8 +1002,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return false
     }
 
-    return !isPhaseLocked(state, phase, now)
-  }, [ready, currentUser, state])
+    return isPhaseEditableAtNow(phase)
+  }, [ready, currentUser, activePhase, state.submissions, isPhaseEditableAtNow])
 
   const savePrediction = useCallback((payload: SavePredictionInput) => {
     if (!currentUser) {
@@ -735,29 +1085,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => applyAutoConfirm(applyAutomaticLiveStatus(prev)))
   }, [])
 
-  const setMatchResult = useCallback((payload: SetResultInput) => {
+  const setMatchResult = useCallback(async (payload: SetResultInput): Promise<ActionResult> => {
     if (!currentUser?.isAdmin) {
       return { ok: false as const, message: 'Solo admin puede editar resultados.' }
     }
 
+    if (!sessionToken) {
+      return { ok: false, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    const response = await invokeAdminQuinielasAction<
+      {
+        id: string
+        status: 'scheduled' | 'live' | 'final'
+        homeGoals: number | null
+        awayGoals: number | null
+        qualifiedTeamId: string | null
+        manualOverride: boolean
+      },
+      { match: MatchDTO }
+    >('update_match', sessionToken, {
+      id: payload.matchId,
+      status: payload.status,
+      homeGoals: payload.homeGoals,
+      awayGoals: payload.awayGoals,
+      qualifiedTeamId: payload.qualifiedTeamId,
+      manualOverride: true,
+    })
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    const updatedMatch = mapMatchDTO(response.data.match)
     setState((prev) => ({
       ...prev,
-      matches: prev.matches.map((match) =>
-        match.id === payload.matchId
-          ? {
-              ...match,
-              status: payload.status,
-              homeGoals: payload.homeGoals,
-              awayGoals: payload.awayGoals,
-              qualifiedTeamId: payload.qualifiedTeamId,
-              manualOverride: true,
-            }
-          : match,
-      ),
+      matches: prev.matches.map((match) => (match.id === payload.matchId ? updatedMatch : match)),
     }))
 
-    return { ok: true as const }
-  }, [currentUser?.isAdmin])
+    return { ok: true }
+  }, [currentUser?.isAdmin, sessionToken])
 
   const setPhaseOverride = useCallback((phase: PhaseKey, opensAt: string, closesAt: string) => {
     if (!currentUser?.isAdmin) {
@@ -774,29 +1141,66 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })
   }, [currentUser?.isAdmin])
 
-  const resetUserPin = useCallback((userId: string, newPin: string) => {
+  const resetUserPin = useCallback(async (userId: string, newPin: string): Promise<ActionResult> => {
     if (!currentUser?.isAdmin) {
-      return { ok: false as const, message: 'Solo admin puede resetear PIN.' }
+      return formatUsersError('Solo admin puede resetear PIN.')
+    }
+
+    if (!sessionToken) {
+      return formatUsersError('Sesion invalida. Inicia sesion de nuevo.')
     }
 
     if (!isPinValid(newPin)) {
-      return { ok: false as const, message: 'El nuevo PIN debe tener 6 digitos.' }
+      return formatUsersError('El nuevo PIN debe tener 6 digitos.')
+    }
+
+    const resetResponse = await invokeUsersAction<
+      { sessionToken: string; userId: string; newPin: string },
+      AdminMutationResultDTO
+    >('admin_reset_pin', {
+      sessionToken,
+      userId,
+      newPin,
+    })
+
+    if (!resetResponse.ok) {
+      return formatUsersError(resetResponse.error.message)
+    }
+
+    await refreshUsersWithSession(sessionToken, true)
+    return { ok: true }
+  }, [currentUser?.isAdmin, refreshUsersWithSession, sessionToken])
+
+  const softDeleteUser = useCallback(async (userId: string): Promise<ActionResult> => {
+    if (!currentUser?.isAdmin) {
+      return formatUsersError('Solo admin puede eliminar usuarios.')
+    }
+
+    if (!sessionToken) {
+      return formatUsersError('Sesion invalida. Inicia sesion de nuevo.')
+    }
+
+    const deleteResponse = await invokeUsersAction<
+      { sessionToken: string; userId: string },
+      AdminMutationResultDTO
+    >('admin_soft_delete', {
+      sessionToken,
+      userId,
+    })
+
+    if (!deleteResponse.ok) {
+      return formatUsersError(deleteResponse.error.message)
     }
 
     setState((prev) => ({
       ...prev,
-      users: prev.users.map((user) =>
-        user.id === userId
-          ? {
-              ...user,
-              pinHash: hashPin(newPin),
-            }
-          : user,
-      ),
+      predictions: prev.predictions.filter((prediction) => prediction.userId !== userId),
+      submissions: prev.submissions.filter((submission) => submission.userId !== userId),
     }))
 
-    return { ok: true as const }
-  }, [currentUser?.isAdmin])
+    await refreshUsersWithSession(sessionToken, true)
+    return { ok: true }
+  }, [currentUser?.isAdmin, refreshUsersWithSession, sessionToken])
 
   const isPhaseConfirmed = useCallback((phase: PhaseKey) => {
     if (!currentUser) return false
@@ -819,6 +1223,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     teamsById,
     activePhase,
     leaderboard,
+    sessionToken,
     register,
     login,
     logout,
@@ -829,7 +1234,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMatchResult,
     setPhaseOverride,
     resetUserPin,
+    softDeleteUser,
+    refreshUsers,
     canEditPhase,
+    isPhaseEditableAtNow,
     isPhaseConfirmed,
     isPhaseLockedAtNow,
     getPhaseWindowAtNow,

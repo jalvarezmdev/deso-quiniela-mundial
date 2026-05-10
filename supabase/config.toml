@@ -1,0 +1,5 @@
+[functions.users]
+verify_jwt = false
+
+[functions.quinielas]
+verify_jwt = false

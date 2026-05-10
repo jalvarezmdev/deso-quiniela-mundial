@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { RequireAuth } from '#/components/layout/require-auth'
 import { PageShell } from '#/components/layout/page-shell'
@@ -9,6 +9,7 @@ import { Card } from '#/components/ui/card'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { useApp } from '#/context/app-context'
+import { getGroupMatchRoundMap, groupMatchesByGroupName, type GroupRound } from '#/lib/group-rounds'
 import { getTeam } from '#/lib/teams'
 import { toVenDateTimeLabel } from '#/lib/time'
 import { PHASES, type Match, type PhaseKey } from '#/lib/types'
@@ -25,6 +26,27 @@ function isKnockout(phase: PhaseKey): boolean {
   return phase !== 'groups'
 }
 
+function teamCode(teamId: string): string {
+  return teamId.toUpperCase()
+}
+
+function teamDisplayWithAbv(teamId: string): string {
+  const team = getTeam(teamId)
+  return `${team.name} (${teamCode(teamId)})`
+}
+
+function groupAccentClass(groupName: string): string {
+  const key = groupName.trim().toLowerCase()
+  if (key.endsWith('a')) return 'bg-blue-100 text-blue-800 border-blue-200'
+  if (key.endsWith('b')) return 'bg-cyan-100 text-cyan-800 border-cyan-200'
+  if (key.endsWith('c')) return 'bg-emerald-100 text-emerald-800 border-emerald-200'
+  if (key.endsWith('d')) return 'bg-indigo-100 text-indigo-800 border-indigo-200'
+  return 'bg-zinc-100 text-zinc-700 border-zinc-200'
+}
+
+const GROUP_ROUNDS: GroupRound[] = [1, 2, 3]
+type RoundFilter = 'all' | GroupRound
+
 function QuinielaPage() {
   const {
     state,
@@ -33,6 +55,7 @@ function QuinielaPage() {
     savePrediction,
     confirmPhase,
     canEditPhase,
+    isPhaseEditableAtNow,
     isPhaseConfirmed,
     isPhaseLockedAtNow,
     getPhaseWindowAtNow,
@@ -43,6 +66,7 @@ function QuinielaPage() {
   const [awayGoals, setAwayGoals] = useState('0')
   const [qualifiedTeamId, setQualifiedTeamId] = useState<string>('')
   const [notice, setNotice] = useState<string | null>(null)
+  const [roundFilter, setRoundFilter] = useState<RoundFilter>('all')
 
   const matches = useMemo(
     () =>
@@ -51,6 +75,17 @@ function QuinielaPage() {
         .sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime()),
     [activePhase, state.matches],
   )
+
+  const groupRoundMap = useMemo(() => getGroupMatchRoundMap(matches), [matches])
+
+  const visibleRounds = useMemo(
+    () => (roundFilter === 'all' ? GROUP_ROUNDS : [roundFilter]),
+    [roundFilter],
+  )
+
+  useEffect(() => {
+    setRoundFilter('all')
+  }, [activePhase])
 
   if (!currentUser) {
     return null
@@ -105,7 +140,83 @@ function QuinielaPage() {
   }
 
   const editable = canEditPhase(activePhase)
+  const phaseEditableAtNow = isPhaseEditableAtNow(activePhase)
   const phaseWindow = getPhaseWindowAtNow(activePhase)
+
+  function renderGroupedMatchRow(match: Match) {
+    const home = getTeam(match.homeTeamId)
+    const away = getTeam(match.awayTeamId)
+    const prediction = state.predictions.find(
+      (item) =>
+        item.userId === currentUser.id &&
+        item.phase === activePhase &&
+        item.matchId === match.id,
+    )
+
+    return (
+      <div key={match.id} className="flex flex-col gap-3 rounded-lg border border-[var(--line)] bg-white p-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-zinc-700">{toVenDateTimeLabel(match.kickoffAt)}</p>
+        </div>
+
+        <div className="text-lg font-black text-[var(--primary)]">
+          {home.flag} {teamDisplayWithAbv(match.homeTeamId)} vs {away.flag} {teamDisplayWithAbv(match.awayTeamId)}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {prediction ? (
+            <Badge className="bg-emerald-100 text-emerald-700">
+              Guardado: {prediction.homeGoals}-{prediction.awayGoals}
+            </Badge>
+          ) : (
+            <Badge>Sin guardar</Badge>
+          )}
+
+          <Button onClick={() => openModal(match)} disabled={!editable}>
+            Cargar
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  function renderMatchCardStandalone(match: Match) {
+    const home = getTeam(match.homeTeamId)
+    const away = getTeam(match.awayTeamId)
+    const prediction = state.predictions.find(
+      (item) =>
+        item.userId === currentUser.id &&
+        item.phase === activePhase &&
+        item.matchId === match.id,
+    )
+
+    return (
+      <Card key={match.id} className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            {match.groupName ?? phaseLabel(match.phase)}
+          </p>
+          <p className="text-sm text-zinc-600">{toVenDateTimeLabel(match.kickoffAt)}</p>
+        </div>
+        <div className="text-lg font-black text-[var(--primary)]">
+          {home.flag} {teamDisplayWithAbv(match.homeTeamId)} vs {away.flag} {teamDisplayWithAbv(match.awayTeamId)}
+        </div>
+        <div className="flex items-center gap-2">
+          {prediction ? (
+            <Badge className="bg-emerald-100 text-emerald-700">
+              Guardado: {prediction.homeGoals}-{prediction.awayGoals}
+            </Badge>
+          ) : (
+            <Badge>Sin guardar</Badge>
+          )}
+
+          <Button onClick={() => openModal(match)} disabled={!editable}>
+            Cargar
+          </Button>
+        </div>
+      </Card>
+    )
+  }
 
   return (
     <RequireAuth>
@@ -126,7 +237,9 @@ function QuinielaPage() {
               ? 'confirmada'
               : isPhaseLockedAtNow(activePhase)
                 ? 'cerrada'
-                : 'abierta'}
+                : phaseEditableAtNow
+                  ? 'abierta'
+                  : 'pendiente'}
           </p>
         </Card>
 
@@ -145,47 +258,62 @@ function QuinielaPage() {
           ))}
         </section>
 
-        <section className="grid gap-3">
-          {matches.map((match) => {
-            const home = getTeam(match.homeTeamId)
-            const away = getTeam(match.awayTeamId)
-            const prediction = state.predictions.find(
-              (item) =>
-                item.userId === currentUser.id &&
-                item.phase === activePhase &&
-                item.matchId === match.id,
-            )
+        {activePhase === 'groups' ? (
+          <>
+            <section className="mb-4 flex flex-wrap gap-2">
+              <Button
+                variant={roundFilter === 'all' ? 'default' : 'outline'}
+                onClick={() => setRoundFilter('all')}
+              >
+                Todas
+              </Button>
+              {GROUP_ROUNDS.map((round) => (
+                <Button
+                  key={round}
+                  variant={roundFilter === round ? 'default' : 'outline'}
+                  onClick={() => setRoundFilter(round)}
+                >
+                  J{round}
+                </Button>
+              ))}
+            </section>
 
-            return (
-              <Card key={match.id} className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    {match.groupName ?? phaseLabel(match.phase)}
-                  </p>
-                  <p className="text-sm text-zinc-600">{toVenDateTimeLabel(match.kickoffAt)}</p>
-                </div>
+            <section className="grid gap-4">
+              {visibleRounds.map((round) => {
+                const roundMatches = matches.filter((match) => groupRoundMap.get(match.id) === round)
+                if (roundMatches.length === 0) {
+                  return null
+                }
 
-                <div className="text-lg font-black text-[var(--primary)]">
-                  {home.flag} {home.name} vs {away.flag} {away.name}
-                </div>
+                const groupedMatches = groupMatchesByGroupName(roundMatches)
 
-                <div className="flex items-center gap-2">
-                  {prediction ? (
-                    <Badge className="bg-emerald-100 text-emerald-700">
-                      Guardado: {prediction.homeGoals}-{prediction.awayGoals}
-                    </Badge>
-                  ) : (
-                    <Badge>Sin guardar</Badge>
-                  )}
-
-                  <Button onClick={() => openModal(match)} disabled={!editable}>
-                    Cargar
-                  </Button>
-                </div>
-              </Card>
-            )
-          })}
-        </section>
+                return (
+                  <div key={round}>
+                    <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-zinc-600">
+                      Jornada {round}
+                    </h3>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {groupedMatches.map((group) => (
+                        <Card key={`${round}-${group.groupName}`} className="p-0 overflow-hidden">
+                          <div className={`border-b px-4 py-3 ${groupAccentClass(group.groupName)}`}>
+                            <p className="text-sm font-black uppercase tracking-wide">{group.groupName}</p>
+                          </div>
+                          <div className="grid gap-2 p-3">
+                            {group.matches.map((match) => renderGroupedMatchRow(match))}
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </section>
+          </>
+        ) : (
+          <section className="grid gap-3">
+            {matches.map((match) => renderMatchCardStandalone(match))}
+          </section>
+        )}
 
         <div className="mt-6 flex items-center justify-end gap-2">
           {notice ? <p className="mr-auto text-sm text-zinc-700">{notice}</p> : null}
@@ -198,31 +326,42 @@ function QuinielaPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <Card className="w-full max-w-md p-6">
               <h2 className="text-xl font-black text-[var(--primary)]">Cargar cruce</h2>
-              <p className="mt-1 text-sm text-zinc-600">
-                {getTeam(selectedMatch.homeTeamId).name} vs {getTeam(selectedMatch.awayTeamId).name}
-              </p>
 
               <form className="mt-4 space-y-3" onSubmit={onSaveMatch}>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="homeGoals">Goles local</Label>
+                    <Label
+                      htmlFor="homeGoals"
+                      className="mb-2 block max-w-full truncate text-center text-2xl font-extrabold leading-tight md:text-3xl"
+                      title={getTeam(selectedMatch.homeTeamId).name}
+                    >
+                      {getTeam(selectedMatch.homeTeamId).flag} {teamCode(selectedMatch.homeTeamId)}
+                    </Label>
                     <Input
                       id="homeGoals"
                       type="number"
                       min={0}
                       value={homeGoals}
                       onChange={(event) => setHomeGoals(event.target.value)}
+                      className="h-16 text-center text-4xl font-black tabular-nums tracking-tight"
                       required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="awayGoals">Goles visitante</Label>
+                    <Label
+                      htmlFor="awayGoals"
+                      className="mb-2 block max-w-full truncate text-center text-2xl font-extrabold leading-tight md:text-3xl"
+                      title={getTeam(selectedMatch.awayTeamId).name}
+                    >
+                      {getTeam(selectedMatch.awayTeamId).flag} {teamCode(selectedMatch.awayTeamId)}
+                    </Label>
                     <Input
                       id="awayGoals"
                       type="number"
                       min={0}
                       value={awayGoals}
                       onChange={(event) => setAwayGoals(event.target.value)}
+                      className="h-16 text-center text-4xl font-black tabular-nums tracking-tight"
                       required
                     />
                   </div>

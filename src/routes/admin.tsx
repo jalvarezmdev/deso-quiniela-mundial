@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { RequireAdmin } from '#/components/layout/require-auth'
 import { PageShell } from '#/components/layout/page-shell'
@@ -21,10 +21,6 @@ export const Route = createFileRoute('/admin')({
   component: AdminPage,
 })
 
-function isKnockout(phase: PhaseKey) {
-  return phase !== 'groups'
-}
-
 function AdminPage() {
   const {
     state,
@@ -32,31 +28,47 @@ function AdminPage() {
     setPhaseOverride,
     getPhaseWindowAtNow,
     resetUserPin,
+    softDeleteUser,
+    refreshUsers,
+    currentUser,
   } = useApp()
 
   const [notice, setNotice] = useState<string | null>(null)
+  const [busyUserId, setBusyUserId] = useState<string | null>(null)
 
-  const knockoutMatches = useMemo(
-    () => state.matches.filter((match) => isKnockout(match.phase)),
+  const editableMatches = useMemo(
+    () => [...state.matches].sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime()),
     [state.matches],
   )
 
-  function onSaveResult(event: FormEvent<HTMLFormElement>, matchId: string) {
+  async function onSaveResult(event: FormEvent<HTMLFormElement>, matchId: string, phase: PhaseKey) {
     event.preventDefault()
 
     const form = new FormData(event.currentTarget)
     const homeGoals = Number(form.get('homeGoals'))
     const awayGoals = Number(form.get('awayGoals'))
     const qualifiedTeamId = String(form.get('qualifiedTeamId') ?? '')
-    const status = String(form.get('status') ?? 'final') as 'live' | 'final'
+    const status = String(form.get('status') ?? 'final') as 'scheduled' | 'live' | 'final'
+    const isKnockout = phase !== 'groups'
 
-    const response = setMatchResult({
-      matchId,
-      homeGoals,
-      awayGoals,
-      qualifiedTeamId: qualifiedTeamId || null,
-      status,
-    })
+    const payload =
+      status === 'scheduled'
+        ? {
+            matchId,
+            homeGoals: null,
+            awayGoals: null,
+            qualifiedTeamId: null,
+            status,
+          }
+        : {
+            matchId,
+            homeGoals,
+            awayGoals,
+            qualifiedTeamId: isKnockout ? qualifiedTeamId || null : null,
+            status,
+          }
+
+    const response = await setMatchResult(payload)
 
     if (!response.ok) {
       setNotice(response.message)
@@ -82,12 +94,19 @@ function AdminPage() {
     setNotice('Ventana de fase actualizada.')
   }
 
-  function onResetPin(event: FormEvent<HTMLFormElement>, userId: string) {
+  useEffect(() => {
+    if (!currentUser?.isAdmin) return
+    void refreshUsers()
+  }, [currentUser?.isAdmin, refreshUsers])
+
+  async function onResetPin(event: FormEvent<HTMLFormElement>, userId: string) {
     event.preventDefault()
+    setBusyUserId(userId)
 
     const form = new FormData(event.currentTarget)
     const newPin = String(form.get('newPin') ?? '')
-    const response = resetUserPin(userId, newPin)
+    const response = await resetUserPin(userId, newPin)
+    setBusyUserId(null)
 
     if (!response.ok) {
       setNotice(response.message)
@@ -96,6 +115,22 @@ function AdminPage() {
 
     setNotice('PIN reseteado correctamente.')
     event.currentTarget.reset()
+  }
+
+  async function onSoftDelete(userId: string) {
+    const ok = window.confirm('Esta accion elimina logicamente al usuario y cierra sus sesiones. Continuar?')
+    if (!ok) return
+
+    setBusyUserId(userId)
+    const response = await softDeleteUser(userId)
+    setBusyUserId(null)
+
+    if (!response.ok) {
+      setNotice(response.message)
+      return
+    }
+
+    setNotice('Usuario eliminado logicamente.')
   }
 
   return (
@@ -111,12 +146,13 @@ function AdminPage() {
             </p>
 
             <div className="mt-4 grid gap-4">
-              {knockoutMatches.map((match) => {
+              {editableMatches.map((match) => {
                 const home = getTeam(match.homeTeamId)
                 const away = getTeam(match.awayTeamId)
+                const isKnockout = match.phase !== 'groups'
 
                 return (
-                  <form key={match.id} onSubmit={(event) => onSaveResult(event, match.id)} className="rounded-lg border border-zinc-200 p-4">
+                  <form key={match.id} onSubmit={(event) => void onSaveResult(event, match.id, match.phase)} className="rounded-lg border border-zinc-200 p-4">
                     <div className="mb-2 flex items-center justify-between">
                       <p className="font-semibold text-[var(--primary)]">
                         {home.flag} {home.name} vs {away.flag} {away.name}
@@ -135,15 +171,19 @@ function AdminPage() {
                       </div>
                       <div>
                         <Label>Clasificado</Label>
-                        <select
-                          name="qualifiedTeamId"
-                          defaultValue={match.qualifiedTeamId ?? ''}
-                          className="h-10 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
-                          required
-                        >
-                          <option value={home.id}>{home.flag} {home.name}</option>
-                          <option value={away.id}>{away.flag} {away.name}</option>
-                        </select>
+                        {isKnockout ? (
+                          <select
+                            name="qualifiedTeamId"
+                            defaultValue={match.qualifiedTeamId ?? ''}
+                            className="h-10 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
+                            required
+                          >
+                            <option value={home.id}>{home.flag} {home.name}</option>
+                            <option value={away.id}>{away.flag} {away.name}</option>
+                          </select>
+                        ) : (
+                          <Input value="N/A (fase de grupos)" readOnly />
+                        )}
                       </div>
                       <div>
                         <Label>Estatus</Label>
@@ -152,6 +192,7 @@ function AdminPage() {
                           defaultValue={match.status === 'live' ? 'live' : 'final'}
                           className="h-10 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
                         >
+                          <option value="scheduled">SCHEDULED</option>
                           <option value="live">LIVE</option>
                           <option value="final">FINAL</option>
                         </select>
@@ -222,14 +263,22 @@ function AdminPage() {
                 <form key={user.id} onSubmit={(event) => onResetPin(event, user.id)} className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 p-3">
                   <div className="min-w-48 flex-1">
                     <p className="text-sm font-semibold text-[var(--primary)]">{user.nickname}</p>
-                    <p className="text-xs text-zinc-500">{user.email}</p>
+                    <p className="text-xs text-zinc-500">{user.email ?? 'Sin correo'}</p>
                   </div>
                   <div>
                     <Label>Nuevo PIN</Label>
                     <Input name="newPin" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required />
                   </div>
-                  <Button type="submit" variant="outline">
-                    Resetear
+                  <Button type="submit" variant="outline" disabled={busyUserId === user.id}>
+                    {busyUserId === user.id ? 'Procesando...' : 'Resetear'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busyUserId === user.id}
+                    onClick={() => onSoftDelete(user.id)}
+                  >
+                    Eliminar
                   </Button>
                 </form>
               ))}

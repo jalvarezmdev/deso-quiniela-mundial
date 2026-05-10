@@ -10,6 +10,15 @@ export const TEAMS: Team[] = [
   { id: 'usa', name: 'Estados Unidos', flag: '🇺🇸' },
   { id: 'mex', name: 'Mexico', flag: '🇲🇽' },
   { id: 'can', name: 'Canada', flag: '🇨🇦' },
+  { id: 'zaf', name: 'Sudafrica', flag: '🇿🇦' },
+  { id: 'cze', name: 'Chequia', flag: '🇨🇿' },
+  { id: 'bih', name: 'Bosnia y Herzegovina', flag: '🇧🇦' },
+  { id: 'cpv', name: 'Cabo Verde', flag: '🇨🇻' },
+  { id: 'civ', name: 'Costa de Marfil', flag: '🇨🇮' },
+  { id: 'cod', name: 'RD Congo', flag: '🇨🇩' },
+  { id: 'cuw', name: 'Curazao', flag: '🇨🇼' },
+  { id: 'hai', name: 'Haiti', flag: '🇭🇹' },
+  { id: 'sco', name: 'Escocia', flag: '🏴' },
   { id: 'esp', name: 'España', flag: '🇪🇸' },
   { id: 'fra', name: 'Francia', flag: '🇫🇷' },
   { id: 'eng', name: 'Inglaterra', flag: '🏴' },
@@ -40,16 +49,27 @@ export const TEAMS: Team[] = [
   { id: 'tur', name: 'Turquia', flag: '🇹🇷' },
   { id: 'gre', name: 'Grecia', flag: '🇬🇷' },
   { id: 'irn', name: 'Iran', flag: '🇮🇷' },
+  { id: 'irq', name: 'Irak', flag: '🇮🇶' },
+  { id: 'jor', name: 'Jordania', flag: '🇯🇴' },
   { id: 'ksa', name: 'Arabia Saudita', flag: '🇸🇦' },
   { id: 'qat', name: 'Qatar', flag: '🇶🇦' },
   { id: 'alg', name: 'Argelia', flag: '🇩🇿' },
+  { id: 'nzl', name: 'Nueva Zelanda', flag: '🇳🇿' },
+  { id: 'pan', name: 'Panama', flag: '🇵🇦' },
   { id: 'per', name: 'Peru', flag: '🇵🇪' },
   { id: 'chi', name: 'Chile', flag: '🇨🇱' },
   { id: 'par', name: 'Paraguay', flag: '🇵🇾' },
   { id: 'bol', name: 'Bolivia', flag: '🇧🇴' },
   { id: 'crc', name: 'Costa Rica', flag: '🇨🇷' },
+  { id: 'uzb', name: 'Uzbekistan', flag: '🇺🇿' },
 ]
 
 export function getTeam(teamId: string): Team {
-  return TEAMS.find((team) => team.id === teamId) ?? TEAMS[0]!
+  return (
+    TEAMS.find((team) => team.id === teamId) ?? {
+      id: teamId,
+      name: `Desconocido (${teamId})`,
+      flag: '🏳️',
+    }
+  )
 }

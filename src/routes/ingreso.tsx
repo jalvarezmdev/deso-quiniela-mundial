@@ -26,6 +26,7 @@ function IngresoPage() {
   const [teamId, setTeamId] = useState(TEAMS[0]?.id ?? 'arg')
   const [secretPhrase, setSecretPhrase] = useState('')
   const [pin, setPin] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const teams = useMemo(() => TEAMS, [])
 
@@ -33,17 +34,20 @@ function IngresoPage() {
     return <Navigate to={currentUser.onboardingCompleted ? '/' : '/onboarding'} />
   }
 
-  function onRegisterSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onRegisterSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
+    setSubmitting(true)
 
-    const result = register({
+    const result = await register({
       email,
       nickname,
       teamId,
       pin,
       secretPhrase,
     })
+
+    setSubmitting(false)
 
     if (!result.ok) {
       setError(result.message)
@@ -53,14 +57,17 @@ function IngresoPage() {
     navigate({ to: '/onboarding' })
   }
 
-  function onLoginSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
+    setSubmitting(true)
 
-    const result = login({
+    const result = await login({
       email: loginEmail,
       pin: loginPin,
     })
+
+    setSubmitting(false)
 
     if (!result.ok) {
       setError(result.message)
@@ -80,8 +87,8 @@ function IngresoPage() {
           Organiza tus rondas, confirma tu quiniela y compite por puntos.
         </h1>
         <p className="mt-4 text-sm text-zinc-600">
-          Flujo cerrado por fases: grupos, 16vos, 8vos, 4tos, semis y final. Cada fase se
-          bloquea al iniciar su primer partido.
+          Flujo cerrado por fases que inicia en grupos y sigue por 16vos, 8vos, 4tos, semis y final.
+          Cada fase se bloquea al iniciar su primer partido.
         </p>
       </section>
 
@@ -90,6 +97,7 @@ function IngresoPage() {
           <button
             type="button"
             onClick={() => setMode('login')}
+            disabled={submitting}
             className={`rounded-md px-3 py-2 text-sm font-semibold ${
               mode === 'login' ? 'bg-white text-[var(--primary)] shadow-sm' : 'text-zinc-600'
             }`}
@@ -99,6 +107,7 @@ function IngresoPage() {
           <button
             type="button"
             onClick={() => setMode('register')}
+            disabled={submitting}
             className={`rounded-md px-3 py-2 text-sm font-semibold ${
               mode === 'register' ? 'bg-white text-[var(--primary)] shadow-sm' : 'text-zinc-600'
             }`}
@@ -133,8 +142,8 @@ function IngresoPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full">
-              Ingresar
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? 'Ingresando...' : 'Ingresar'}
             </Button>
           </form>
         ) : (
@@ -194,8 +203,8 @@ function IngresoPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full">
-              Crear cuenta
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? 'Creando...' : 'Crear cuenta'}
             </Button>
           </form>
         )}
