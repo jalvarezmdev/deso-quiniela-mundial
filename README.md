@@ -6,6 +6,7 @@ App web para organizar quiniela por fases del Mundial con React + TanStack Start
 
 - Registro por correo + frase secreta + PIN numerico de 6 digitos
 - Login por correo + PIN
+- Sesion JWT propia (7 dias) emitida por Supabase Edge Function `users`
 - Onboarding de 3 pantallas (solo primera vez)
 - Pantalla principal con accesos a:
   - Resultados del dia
@@ -46,15 +47,21 @@ App: `http://localhost:3000`
 
 Copia `.env.example` a `.env` y define:
 
-- `VITE_REGISTRATION_SECRET`
-- `VITE_ADMIN_EMAILS`
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
 ## Supabase
 
-- Esquema SQL: `supabase/schema.sql`
+- Migraciones SQL: `supabase/migrations/`
+- Esquema SQL de referencia: `supabase/schema.sql`
+- Edge Function de usuarios: `supabase/functions/users/index.ts`
 - Edge Function stub scraping SofaScore: `supabase/functions/scrape-sofascore/index.ts`
+
+Secrets requeridos en la Edge Function `users`:
+
+- `APP_JWT_SECRET`
+- `ADMIN_EMAILS` (CSV de correos admin)
+- `REGISTRATION_SECRET`
 
 ## Verificacion
 

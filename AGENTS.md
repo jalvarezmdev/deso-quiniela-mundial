@@ -64,3 +64,19 @@ skills:
   - when: "Programmatic route tree building as an alternative to filesystem conventions: rootRoute, index, route, layout, physical, defineVirtualSubtreeConfig. Use with TanStack Router plugin's virtualRouteConfig option."
     use: "@tanstack/virtual-file-routes#virtual-file-routes"
 <!-- intent-skills:end -->
+
+## Supabase Functions DDD Convention
+
+For Supabase Edge Functions, use this structure:
+
+- `supabase/functions/<function-name>/index.ts`: transport-only entrypoint (HTTP method/CORS/body parsing/auth gates/action dispatch).
+- `supabase/functions/_shared/user/actions/*.ts`: user bounded-context action handlers.
+- `supabase/functions/_shared/user/helpers/*.ts`: user bounded-context DTOs, validation, mappers, and user-specific response helpers.
+- `supabase/functions/_shared/general/*.ts`: cross-domain/shared infrastructure helpers (e.g. auth signing/verification, Supabase admin client).
+
+Rules:
+
+- Keep action names and request/response envelopes stable unless explicitly requested.
+- Prefer one action per file in `user/actions`.
+- Keep `index.ts` thin; business logic belongs in action modules.
+- Prefer object-literal action dispatch maps in `index.ts` (grouped by access tier) instead of long `if/else` chains.
