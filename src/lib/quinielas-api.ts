@@ -1,5 +1,13 @@
 import { supabase } from '#/lib/supabase'
-import type { Match, MatchStatus, PhaseKey } from '#/lib/types'
+import type {
+  LeaderboardRow,
+  Match,
+  MatchStatus,
+  PhaseKey,
+  PhaseSubmission,
+  PhaseWindowOverride,
+  Prediction,
+} from '#/lib/types'
 
 export type QuinielasError = {
   code: string
@@ -18,17 +26,40 @@ type QuinielasFail = {
 
 export type QuinielasResponse<T> = QuinielasOk<T> | QuinielasFail
 
-type PublicQuinielasAction =
+export type PublicQuinielasAction =
   | 'get_match'
   | 'list_matches'
   | 'get_phase_window_override'
   | 'list_phase_window_overrides'
 
-type AdminQuinielasAction = 'update_match'
+export type AuthenticatedQuinielasAction =
+  | 'create_prediction'
+  | 'get_my_prediction'
+  | 'list_my_predictions'
+  | 'update_prediction'
+  | 'delete_prediction'
+  | 'create_phase_submission'
+  | 'get_my_phase_submission'
+  | 'list_my_phase_submissions'
+  | 'delete_phase_submission'
+  | 'list_leaderboard'
+
+export type AdminQuinielasAction =
+  | 'create_match'
+  | 'update_match'
+  | 'delete_match'
+  | 'create_phase_window_override'
+  | 'update_phase_window_override'
+  | 'delete_phase_window_override'
 
 export type MatchDTO = Match & {
   updatedAt?: string
 }
+
+export type PredictionDTO = Prediction
+export type PhaseSubmissionDTO = PhaseSubmission
+export type PhaseWindowOverrideDTO = PhaseWindowOverride
+export type LeaderboardRowDTO = LeaderboardRow
 
 export type ListMatchesInput = {
   phase?: PhaseKey
@@ -40,6 +71,22 @@ export type ListMatchesInput = {
 
 export type ListMatchesResultDTO = {
   matches: MatchDTO[]
+}
+
+export type ListMyPredictionsResultDTO = {
+  predictions: PredictionDTO[]
+}
+
+export type ListMyPhaseSubmissionsResultDTO = {
+  submissions: PhaseSubmissionDTO[]
+}
+
+export type ListPhaseWindowOverridesResultDTO = {
+  windowOverrides: PhaseWindowOverrideDTO[]
+}
+
+export type ListLeaderboardResultDTO = {
+  leaderboard: LeaderboardRowDTO[]
 }
 
 function asQuinielasError(err: unknown): QuinielasError {
@@ -58,6 +105,51 @@ function asQuinielasError(err: unknown): QuinielasError {
   }
 }
 
+function isApiErrorEnvelope(
+  value: unknown,
+): value is { ok: false; error: { code?: unknown; message?: unknown } } {
+  if (typeof value !== 'object' || value === null || !('ok' in value)) return false
+  const okValue = (value as { ok?: unknown }).ok
+  if (okValue !== false) return false
+
+  const maybeError = (value as { error?: unknown }).error
+  return typeof maybeError === 'object' && maybeError !== null
+}
+
+async function resolveInvokeError(
+  response: Response | undefined,
+  fallbackMessage: string,
+): Promise<QuinielasError> {
+  if (!response) {
+    return {
+      code: 'FUNCTION_INVOKE_ERROR',
+      message: fallbackMessage,
+    }
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (!contentType.includes('application/json')) {
+    return {
+      code: 'FUNCTION_INVOKE_ERROR',
+      message: fallbackMessage,
+    }
+  }
+
+  try {
+    const payload = await response.clone().json()
+    if (isApiErrorEnvelope(payload)) {
+      return asQuinielasError(payload.error)
+    }
+  } catch {
+    // If parsing fails, fallback to invoke-level message.
+  }
+
+  return {
+    code: 'FUNCTION_INVOKE_ERROR',
+    message: fallbackMessage,
+  }
+}
+
 export async function invokeQuinielasAction<TPayload, TResult>(
   action: PublicQuinielasAction,
   payload: TPayload,
@@ -65,6 +157,20 @@ export async function invokeQuinielasAction<TPayload, TResult>(
   return invokeQuinielasRaw<TResult>({
     action,
     payload,
+  })
+}
+
+export async function invokeAuthenticatedQuinielasAction<TPayload, TResult>(
+  action: AuthenticatedQuinielasAction,
+  sessionToken: string,
+  payload: TPayload,
+): Promise<QuinielasResponse<TResult>> {
+  return invokeQuinielasRaw<TResult>({
+    action,
+    payload: {
+      ...((payload as object) ?? {}),
+      sessionToken,
+    },
   })
 }
 
@@ -100,7 +206,7 @@ async function invokeQuinielasRaw<TResult>({
   }
 
   try {
-    const { data, error } = await supabase.functions.invoke('quinielas', {
+    const { data, error, response } = await supabase.functions.invoke('quinielas', {
       body: {
         action,
         payload,
@@ -108,12 +214,10 @@ async function invokeQuinielasRaw<TResult>({
     })
 
     if (error) {
+      const parsedError = await resolveInvokeError(response, error.message)
       return {
         ok: false,
-        error: {
-          code: 'FUNCTION_INVOKE_ERROR',
-          message: error.message,
-        },
+        error: parsedError,
       }
     }
 

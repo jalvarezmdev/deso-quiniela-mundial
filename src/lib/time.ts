@@ -11,6 +11,22 @@ export function toVenDateTimeLabel(isoDate: string): string {
   }).format(new Date(isoDate))
 }
 
+export function toVenShortDateLabel(isoDate: string): string {
+  return new Intl.DateTimeFormat('es-VE', {
+    timeZone: VEN_TZ,
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(isoDate))
+}
+
+export function toVenShortTimeLabel(isoDate: string): string {
+  return new Intl.DateTimeFormat('es-VE', {
+    timeZone: VEN_TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(isoDate))
+}
+
 export function toVenDateInputValue(isoDate: string): string {
   const date = new Date(isoDate)
   const parts = new Intl.DateTimeFormat('en-CA', {

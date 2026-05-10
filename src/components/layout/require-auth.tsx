@@ -5,7 +5,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { ready, currentUser } = useApp()
 
   if (!ready) {
-    return <div className="mx-auto max-w-6xl px-4 py-10 text-sm text-zinc-600">Cargando...</div>
+    return <div className="mx-auto max-w-6xl px-4 py-10 text-sm text-zinc-300">Cargando...</div>
   }
 
   if (!currentUser) {
@@ -19,7 +19,7 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { ready, currentUser } = useApp()
 
   if (!ready) {
-    return <div className="mx-auto max-w-6xl px-4 py-10 text-sm text-zinc-600">Cargando...</div>
+    return <div className="mx-auto max-w-6xl px-4 py-10 text-sm text-zinc-300">Cargando...</div>
   }
 
   if (!currentUser) {

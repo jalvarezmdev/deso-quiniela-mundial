@@ -86,20 +86,20 @@ function IngresoPage() {
         <h1 className="mt-2 text-4xl font-black tracking-tight text-[var(--primary)]">
           Organiza tus rondas, confirma tu quiniela y compite por puntos.
         </h1>
-        <p className="mt-4 text-sm text-zinc-600">
+        <p className="mt-4 text-sm text-zinc-300">
           Flujo cerrado por fases que inicia en grupos y sigue por 16vos, 8vos, 4tos, semis y final.
           Cada fase se bloquea al iniciar su primer partido.
         </p>
       </section>
 
       <Card className="p-6">
-        <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg bg-zinc-100 p-1">
+        <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg bg-zinc-800 p-1">
           <button
             type="button"
             onClick={() => setMode('login')}
             disabled={submitting}
             className={`rounded-md px-3 py-2 text-sm font-semibold ${
-              mode === 'login' ? 'bg-white text-[var(--primary)] shadow-sm' : 'text-zinc-600'
+              mode === 'login' ? 'bg-[var(--secondary)] text-[var(--primary)] shadow-sm' : 'text-zinc-300'
             }`}
           >
             Ingresar
@@ -109,14 +109,14 @@ function IngresoPage() {
             onClick={() => setMode('register')}
             disabled={submitting}
             className={`rounded-md px-3 py-2 text-sm font-semibold ${
-              mode === 'register' ? 'bg-white text-[var(--primary)] shadow-sm' : 'text-zinc-600'
+              mode === 'register' ? 'bg-[var(--secondary)] text-[var(--primary)] shadow-sm' : 'text-zinc-300'
             }`}
           >
             Registrarse
           </button>
         </div>
 
-        {error ? <p className="mb-3 rounded-md bg-red-100 p-2 text-sm text-red-700">{error}</p> : null}
+        {error ? <p className="mb-3 rounded-md bg-red-950/40 p-2 text-sm text-red-300">{error}</p> : null}
 
         {mode === 'login' ? (
           <form className="space-y-3" onSubmit={onLoginSubmit}>
@@ -173,7 +173,7 @@ function IngresoPage() {
                 id="registerTeam"
                 value={teamId}
                 onChange={(event) => setTeamId(event.target.value)}
-                className="h-10 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
+                className="h-10 w-full rounded-md border border-[var(--line)] bg-[var(--secondary)] px-3 text-sm"
               >
                 {teams.map((team) => (
                   <option key={team.id} value={team.id}>

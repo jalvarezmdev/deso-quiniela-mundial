@@ -1,11 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&display=swap');
 @import 'tailwindcss';
 
 :root {
-  --primary: #2b2b2b;
-  --secondary: #fcfcfc;
-  --accent: #2b7cff;
-  --line: #e5e7eb;
+  --primary: #ccff00;
+  --secondary: #141f2b;
+  --brand-secondary: #00e0ff;
+  --tertiary: #ff4d00;
+  --neutral: #f0f4f8;
+  --text-main: #f0f4f8;
+  --surface-0: #070e16;
+  --surface-1: #0e1620;
+  --surface-2: #141f2b;
+  --accent: #ccff00;
+  --line: #1f313d;
 }
 
 * {
@@ -20,20 +27,96 @@ body,
 
 body {
   margin: 0;
-  color: var(--primary);
-  font-family: 'Sora', ui-sans-serif, system-ui, sans-serif;
+  color: var(--text-main);
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
   background:
-    radial-gradient(840px 420px at -10% -10%, rgba(43, 124, 255, 0.14), transparent 60%),
-    radial-gradient(720px 340px at 110% -10%, rgba(43, 43, 43, 0.08), transparent 58%),
-    linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
+    radial-gradient(900px 420px at -10% -10%, rgba(0, 224, 255, 0.12), transparent 62%),
+    radial-gradient(760px 360px at 110% -10%, rgba(204, 255, 0, 0.1), transparent 62%),
+    linear-gradient(180deg, #050a11 0%, #09131f 100%);
 }
 
 h1,
 h2,
 h3 {
-  font-family: 'Space Grotesk', 'Sora', sans-serif;
+  font-family: 'Montserrat', 'Inter', sans-serif;
 }
 
-a {
-  color: inherit;
+a:not([class]) {
+  color: rgb(24 24 27);
+}
+
+@keyframes phase-badge-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.phase-active-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.42rem 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: #b6c3ff;
+  background: linear-gradient(180deg, #0b1325 0%, #091121 100%);
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(96, 112, 255, 0.2);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 0 22px rgba(76, 96, 255, 0.2),
+    0 0 40px rgba(53, 74, 230, 0.14);
+}
+
+.phase-active-badge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    transparent 0deg 304deg,
+    rgba(122, 140, 255, 0.1) 328deg,
+    rgba(140, 154, 255, 0.85) 344deg,
+    rgba(122, 140, 255, 0.14) 356deg,
+    transparent 360deg
+  );
+  animation: phase-badge-spin 2.8s linear infinite;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 1.5px;
+  z-index: -1;
+}
+
+.phase-active-badge::after {
+  content: '';
+  position: absolute;
+  inset: 1.5px;
+  border-radius: inherit;
+  background: var(--surface-2);
+  z-index: -1;
+}
+
+.phase-active-badge-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: #7588ff;
+  box-shadow:
+    0 0 8px rgba(117, 136, 255, 0.8),
+    0 0 16px rgba(117, 136, 255, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phase-active-badge::before {
+    animation: none;
+  }
 }

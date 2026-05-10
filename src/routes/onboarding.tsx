@@ -50,7 +50,7 @@ function OnboardingPage() {
             Paso {index + 1} de {slides.length}
           </p>
           <h2 className="mt-2 text-2xl font-black text-[var(--primary)]">{slide.title}</h2>
-          <p className="mt-4 text-sm leading-6 text-zinc-600">{slide.text}</p>
+          <p className="mt-4 text-sm leading-6 text-zinc-300">{slide.text}</p>
 
           <div className="mt-8 flex items-center justify-between">
             <Button
@@ -85,7 +85,7 @@ function OnboardingPage() {
               </Button>
             )}
           </div>
-          {notice ? <p className="mt-4 text-sm text-red-700">{notice}</p> : null}
+          {notice ? <p className="mt-4 text-sm text-red-300">{notice}</p> : null}
         </Card>
       </PageShell>
     </RequireAuth>

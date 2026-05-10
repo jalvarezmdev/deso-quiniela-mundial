@@ -103,6 +103,51 @@ function asUsersError(err: unknown): UsersError {
   }
 }
 
+function isApiErrorEnvelope(
+  value: unknown,
+): value is { ok: false; error: { code?: unknown; message?: unknown } } {
+  if (typeof value !== 'object' || value === null || !('ok' in value)) return false
+  const okValue = (value as { ok?: unknown }).ok
+  if (okValue !== false) return false
+
+  const maybeError = (value as { error?: unknown }).error
+  return typeof maybeError === 'object' && maybeError !== null
+}
+
+async function resolveInvokeError(
+  response: Response | undefined,
+  fallbackMessage: string,
+): Promise<UsersError> {
+  if (!response) {
+    return {
+      code: 'FUNCTION_INVOKE_ERROR',
+      message: fallbackMessage,
+    }
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (!contentType.includes('application/json')) {
+    return {
+      code: 'FUNCTION_INVOKE_ERROR',
+      message: fallbackMessage,
+    }
+  }
+
+  try {
+    const payload = await response.clone().json()
+    if (isApiErrorEnvelope(payload)) {
+      return asUsersError(payload.error)
+    }
+  } catch {
+    // If parsing fails, fallback to invoke-level message.
+  }
+
+  return {
+    code: 'FUNCTION_INVOKE_ERROR',
+    message: fallbackMessage,
+  }
+}
+
 export async function invokeUsersAction<TPayload, TResult>(
   action: UsersAction,
   payload: TPayload,
@@ -118,7 +163,7 @@ export async function invokeUsersAction<TPayload, TResult>(
   }
 
   try {
-    const { data, error } = await supabase.functions.invoke('users', {
+    const { data, error, response } = await supabase.functions.invoke('users', {
       body: {
         action,
         payload,
@@ -126,12 +171,10 @@ export async function invokeUsersAction<TPayload, TResult>(
     })
 
     if (error) {
+      const parsedError = await resolveInvokeError(response, error.message)
       return {
         ok: false,
-        error: {
-          code: 'FUNCTION_INVOKE_ERROR',
-          message: error.message,
-        },
+        error: parsedError,
       }
     }
 

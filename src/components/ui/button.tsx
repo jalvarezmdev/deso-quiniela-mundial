@@ -13,9 +13,9 @@ export function Button({ className, variant = 'default', ...props }: ButtonProps
         variant === 'default' &&
           'bg-[var(--accent)] text-[var(--secondary)] hover:brightness-110',
         variant === 'outline' &&
-          'border border-[var(--line)] bg-[var(--secondary)] text-[var(--primary)] hover:bg-zinc-100',
+          'border border-[var(--line)] bg-[var(--secondary)] text-zinc-200 hover:bg-zinc-800',
         variant === 'ghost' &&
-          'text-[var(--primary)] hover:bg-zinc-100',
+          'text-[var(--primary)] hover:bg-zinc-800',
         variant === 'danger' && 'bg-red-600 text-white hover:bg-red-500',
         className,
       )}

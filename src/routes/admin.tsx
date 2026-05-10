@@ -25,6 +25,8 @@ function AdminPage() {
   const {
     state,
     setMatchResult,
+    createMatch,
+    deleteMatch,
     setPhaseOverride,
     getPhaseWindowAtNow,
     resetUserPin,
@@ -78,7 +80,7 @@ function AdminPage() {
     setNotice('Resultado actualizado por admin.')
   }
 
-  function onSaveWindow(event: FormEvent<HTMLFormElement>, phase: PhaseKey) {
+  async function onSaveWindow(event: FormEvent<HTMLFormElement>, phase: PhaseKey) {
     event.preventDefault()
 
     const form = new FormData(event.currentTarget)
@@ -90,8 +92,59 @@ function AdminPage() {
       return
     }
 
-    setPhaseOverride(phase, fromVenDateTimeInput(opensAt), fromVenDateTimeInput(closesAt))
+    const response = await setPhaseOverride(phase, fromVenDateTimeInput(opensAt), fromVenDateTimeInput(closesAt))
+    if (!response.ok) {
+      setNotice(response.message)
+      return
+    }
     setNotice('Ventana de fase actualizada.')
+  }
+
+  async function onCreateMatch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const form = new FormData(event.currentTarget)
+    const phase = String(form.get('phase') ?? 'groups') as PhaseKey
+    const status = String(form.get('status') ?? 'scheduled') as 'scheduled' | 'live' | 'final'
+    const homeTeamId = String(form.get('homeTeamId') ?? '').trim()
+    const awayTeamId = String(form.get('awayTeamId') ?? '').trim()
+    const qualifiedTeamId = String(form.get('qualifiedTeamId') ?? '').trim()
+    const groupNameRaw = String(form.get('groupName') ?? '').trim()
+
+    const response = await createMatch({
+      id: String(form.get('id') ?? '').trim(),
+      phase,
+      groupName: groupNameRaw || null,
+      homeTeamId,
+      awayTeamId,
+      kickoffAt: new Date(String(form.get('kickoffAt') ?? '')).toISOString(),
+      status,
+      homeGoals: status === 'scheduled' ? null : Number(form.get('homeGoals')),
+      awayGoals: status === 'scheduled' ? null : Number(form.get('awayGoals')),
+      qualifiedTeamId: phase === 'groups' || status === 'scheduled' ? null : qualifiedTeamId || null,
+      manualOverride: true,
+    })
+
+    if (!response.ok) {
+      setNotice(response.message)
+      return
+    }
+
+    setNotice('Partido creado correctamente.')
+    event.currentTarget.reset()
+  }
+
+  async function onDeleteMatch(matchId: string) {
+    const ok = window.confirm('Esta accion elimina logicamente el partido. Continuar?')
+    if (!ok) return
+
+    const response = await deleteMatch(matchId)
+    if (!response.ok) {
+      setNotice(response.message)
+      return
+    }
+
+    setNotice('Partido eliminado correctamente.')
   }
 
   useEffect(() => {
@@ -136,14 +189,71 @@ function AdminPage() {
   return (
     <RequireAdmin>
       <PageShell title="Panel de administrador" subtitle="Gestion de cruces directos, resultados, ventanas y soporte de PIN.">
-        {notice ? <p className="mb-4 rounded-md bg-zinc-100 p-3 text-sm text-zinc-700">{notice}</p> : null}
+        {notice ? <p className="mb-4 rounded-md bg-zinc-800 p-3 text-sm text-zinc-200">{notice}</p> : null}
 
         <section className="grid gap-4">
           <Card>
             <h2 className="text-lg font-black text-[var(--primary)]">Cruces directos y resultados</h2>
-            <p className="mt-1 text-sm text-zinc-600">
+            <p className="mt-1 text-sm text-zinc-300">
               Edicion manual con prioridad sobre scraping.
             </p>
+
+            <form onSubmit={(event) => void onCreateMatch(event)} className="mt-4 rounded-lg border border-zinc-700 p-4">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-zinc-300">Crear partido</h3>
+              <div className="mt-3 grid gap-3 md:grid-cols-4">
+                <div>
+                  <Label>ID</Label>
+                  <Input name="id" placeholder="ga-1" required />
+                </div>
+                <div>
+                  <Label>Fase</Label>
+                  <select name="phase" className="h-10 w-full rounded-md border border-[var(--line)] bg-[var(--secondary)] px-3 text-sm">
+                    {PHASES.map((phase) => (
+                      <option key={phase.key} value={phase.key}>{phase.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label>Grupo</Label>
+                  <Input name="groupName" placeholder="Grupo A (opcional)" />
+                </div>
+                <div>
+                  <Label>Kickoff UTC</Label>
+                  <Input name="kickoffAt" type="datetime-local" required />
+                </div>
+                <div>
+                  <Label>Local (teamId)</Label>
+                  <Input name="homeTeamId" placeholder="arg" required />
+                </div>
+                <div>
+                  <Label>Visitante (teamId)</Label>
+                  <Input name="awayTeamId" placeholder="eng" required />
+                </div>
+                <div>
+                  <Label>Goles local</Label>
+                  <Input name="homeGoals" type="number" min={0} defaultValue={0} />
+                </div>
+                <div>
+                  <Label>Goles visita</Label>
+                  <Input name="awayGoals" type="number" min={0} defaultValue={0} />
+                </div>
+                <div>
+                  <Label>Clasificado</Label>
+                  <Input name="qualifiedTeamId" placeholder="arg (si aplica)" />
+                </div>
+                <div>
+                  <Label>Estatus</Label>
+                  <select name="status" className="h-10 w-full rounded-md border border-[var(--line)] bg-[var(--secondary)] px-3 text-sm">
+                    <option value="scheduled">SCHEDULED</option>
+                    <option value="live">LIVE</option>
+                    <option value="final">FINAL</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-3 flex justify-end">
+                <Button type="submit" variant="outline">Crear partido</Button>
+              </div>
+            </form>
 
             <div className="mt-4 grid gap-4">
               {editableMatches.map((match) => {
@@ -152,7 +262,7 @@ function AdminPage() {
                 const isKnockout = match.phase !== 'groups'
 
                 return (
-                  <form key={match.id} onSubmit={(event) => void onSaveResult(event, match.id, match.phase)} className="rounded-lg border border-zinc-200 p-4">
+                  <form key={match.id} onSubmit={(event) => void onSaveResult(event, match.id, match.phase)} className="rounded-lg border border-zinc-700 p-4">
                     <div className="mb-2 flex items-center justify-between">
                       <p className="font-semibold text-[var(--primary)]">
                         {home.flag} {home.name} vs {away.flag} {away.name}
@@ -175,7 +285,7 @@ function AdminPage() {
                           <select
                             name="qualifiedTeamId"
                             defaultValue={match.qualifiedTeamId ?? ''}
-                            className="h-10 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
+                            className="h-10 w-full rounded-md border border-[var(--line)] bg-[var(--secondary)] px-3 text-sm"
                             required
                           >
                             <option value={home.id}>{home.flag} {home.name}</option>
@@ -190,7 +300,7 @@ function AdminPage() {
                         <select
                           name="status"
                           defaultValue={match.status === 'live' ? 'live' : 'final'}
-                          className="h-10 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
+                          className="h-10 w-full rounded-md border border-[var(--line)] bg-[var(--secondary)] px-3 text-sm"
                         >
                           <option value="scheduled">SCHEDULED</option>
                           <option value="live">LIVE</option>
@@ -200,6 +310,9 @@ function AdminPage() {
                     </div>
 
                     <div className="mt-3 flex justify-end">
+                      <Button type="button" variant="outline" onClick={() => void onDeleteMatch(match.id)}>
+                        Eliminar
+                      </Button>
                       <Button type="submit">Guardar resultado</Button>
                     </div>
                   </form>
@@ -210,7 +323,7 @@ function AdminPage() {
 
           <Card>
             <h2 className="text-lg font-black text-[var(--primary)]">Ventanas de habilitacion por fase</h2>
-            <p className="mt-1 text-sm text-zinc-600">
+            <p className="mt-1 text-sm text-zinc-300">
               Override manual sobre reglas automaticas de apertura/cierre.
             </p>
 
@@ -219,7 +332,7 @@ function AdminPage() {
                 const currentWindow = getPhaseWindowAtNow(phase.key)
 
                 return (
-                  <form key={phase.key} onSubmit={(event) => onSaveWindow(event, phase.key)} className="rounded-lg border border-zinc-200 p-4">
+                  <form key={phase.key} onSubmit={(event) => void onSaveWindow(event, phase.key)} className="rounded-lg border border-zinc-700 p-4">
                     <p className="font-semibold text-[var(--primary)]">{phase.label}</p>
                     <div className="mt-3 grid gap-3 md:grid-cols-2">
                       <div>
@@ -254,16 +367,16 @@ function AdminPage() {
 
           <Card>
             <h2 className="text-lg font-black text-[var(--primary)]">Recuperacion de PIN</h2>
-            <p className="mt-1 text-sm text-zinc-600">
+            <p className="mt-1 text-sm text-zinc-300">
               Reset manual por admin, PIN de 6 digitos.
             </p>
 
             <div className="mt-4 grid gap-3">
               {state.users.map((user) => (
-                <form key={user.id} onSubmit={(event) => onResetPin(event, user.id)} className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 p-3">
+                <form key={user.id} onSubmit={(event) => onResetPin(event, user.id)} className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-700 p-3">
                   <div className="min-w-48 flex-1">
                     <p className="text-sm font-semibold text-[var(--primary)]">{user.nickname}</p>
-                    <p className="text-xs text-zinc-500">{user.email ?? 'Sin correo'}</p>
+                    <p className="text-xs text-zinc-400">{user.email ?? 'Sin correo'}</p>
                   </div>
                   <div>
                     <Label>Nuevo PIN</Label>

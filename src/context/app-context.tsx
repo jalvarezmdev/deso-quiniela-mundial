@@ -6,12 +6,20 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { computeMatchPoints } from '#/lib/game'
 import {
   invokeAdminQuinielasAction,
+  invokeAuthenticatedQuinielasAction,
   invokeQuinielasAction,
+  type LeaderboardRowDTO,
+  type ListLeaderboardResultDTO,
   type ListMatchesResultDTO,
+  type ListMyPhaseSubmissionsResultDTO,
+  type ListMyPredictionsResultDTO,
+  type ListPhaseWindowOverridesResultDTO,
   type MatchDTO,
+  type PhaseSubmissionDTO,
+  type PhaseWindowOverrideDTO,
+  type PredictionDTO,
 } from '#/lib/quinielas-api'
 import {
   invokeUsersAction,
@@ -20,8 +28,6 @@ import {
   type BasicUserDTO,
   type SessionUserDTO,
 } from '#/lib/users-api'
-import { nowIso } from '#/lib/time'
-import { getTeam } from '#/lib/teams'
 import {
   PHASE_ORDER,
   getActivePhase,
@@ -30,7 +36,6 @@ import {
   isPhaseLocked,
 } from '#/lib/phase-flow'
 import {
-  PHASES,
   type AppState,
   type LeaderboardRow,
   type Match,
@@ -40,11 +45,8 @@ import {
   type User,
 } from '#/lib/types'
 
-const STORAGE_KEY = 'quiniela_state_v1'
 const SESSION_TOKEN_KEY = 'quiniela_session_token_v1'
 const HYDRATION_SAFE_NOW_ISO = '2026-01-01T00:00:00.000Z'
-
-const MS_MATCH_WINDOW = 2 * 60 * 60 * 1000
 
 function isPinValid(pin: string): boolean {
   return /^\d{6}$/.test(pin)
@@ -54,444 +56,15 @@ function wasPhaseConfirmed(submissions: PhaseSubmission[], userId: string, phase
   return submissions.some((submission) => submission.userId === userId && submission.phase === phase)
 }
 
-function defaultMatches(): Match[] {
-  return [
-    {
-      id: 'ga-1',
-      phase: 'groups',
-      groupName: 'Grupo A',
-      homeTeamId: 'mex',
-      awayTeamId: 'zaf',
-      kickoffAt: '2026-06-11T17:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'ga-2',
-      phase: 'groups',
-      groupName: 'Grupo A',
-      homeTeamId: 'kor',
-      awayTeamId: 'cze',
-      kickoffAt: '2026-06-11T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'ga-3',
-      phase: 'groups',
-      groupName: 'Grupo A',
-      homeTeamId: 'mex',
-      awayTeamId: 'kor',
-      kickoffAt: '2026-06-18T17:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'ga-4',
-      phase: 'groups',
-      groupName: 'Grupo A',
-      homeTeamId: 'cze',
-      awayTeamId: 'zaf',
-      kickoffAt: '2026-06-18T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'ga-5',
-      phase: 'groups',
-      groupName: 'Grupo A',
-      homeTeamId: 'cze',
-      awayTeamId: 'mex',
-      kickoffAt: '2026-06-24T17:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'ga-6',
-      phase: 'groups',
-      groupName: 'Grupo A',
-      homeTeamId: 'zaf',
-      awayTeamId: 'kor',
-      kickoffAt: '2026-06-24T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gb-1',
-      phase: 'groups',
-      groupName: 'Grupo B',
-      homeTeamId: 'can',
-      awayTeamId: 'bih',
-      kickoffAt: '2026-06-12T17:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gb-2',
-      phase: 'groups',
-      groupName: 'Grupo B',
-      homeTeamId: 'qat',
-      awayTeamId: 'sui',
-      kickoffAt: '2026-06-13T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gb-3',
-      phase: 'groups',
-      groupName: 'Grupo B',
-      homeTeamId: 'can',
-      awayTeamId: 'qat',
-      kickoffAt: '2026-06-18T21:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gb-4',
-      phase: 'groups',
-      groupName: 'Grupo B',
-      homeTeamId: 'sui',
-      awayTeamId: 'bih',
-      kickoffAt: '2026-06-18T23:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gb-5',
-      phase: 'groups',
-      groupName: 'Grupo B',
-      homeTeamId: 'sui',
-      awayTeamId: 'can',
-      kickoffAt: '2026-06-24T17:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gb-6',
-      phase: 'groups',
-      groupName: 'Grupo B',
-      homeTeamId: 'bih',
-      awayTeamId: 'qat',
-      kickoffAt: '2026-06-24T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gc-1',
-      phase: 'groups',
-      groupName: 'Grupo C',
-      homeTeamId: 'bra',
-      awayTeamId: 'mar',
-      kickoffAt: '2026-06-13T17:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gc-2',
-      phase: 'groups',
-      groupName: 'Grupo C',
-      homeTeamId: 'hai',
-      awayTeamId: 'sco',
-      kickoffAt: '2026-06-13T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gc-3',
-      phase: 'groups',
-      groupName: 'Grupo C',
-      homeTeamId: 'bra',
-      awayTeamId: 'hai',
-      kickoffAt: '2026-06-19T17:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gc-4',
-      phase: 'groups',
-      groupName: 'Grupo C',
-      homeTeamId: 'sco',
-      awayTeamId: 'mar',
-      kickoffAt: '2026-06-19T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gc-5',
-      phase: 'groups',
-      groupName: 'Grupo C',
-      homeTeamId: 'sco',
-      awayTeamId: 'bra',
-      kickoffAt: '2026-06-24T21:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gc-6',
-      phase: 'groups',
-      groupName: 'Grupo C',
-      homeTeamId: 'mar',
-      awayTeamId: 'hai',
-      kickoffAt: '2026-06-24T23:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gd-1',
-      phase: 'groups',
-      groupName: 'Grupo D',
-      homeTeamId: 'usa',
-      awayTeamId: 'par',
-      kickoffAt: '2026-06-12T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gd-2',
-      phase: 'groups',
-      groupName: 'Grupo D',
-      homeTeamId: 'aus',
-      awayTeamId: 'tur',
-      kickoffAt: '2026-06-13T23:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gd-3',
-      phase: 'groups',
-      groupName: 'Grupo D',
-      homeTeamId: 'usa',
-      awayTeamId: 'aus',
-      kickoffAt: '2026-06-19T21:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gd-4',
-      phase: 'groups',
-      groupName: 'Grupo D',
-      homeTeamId: 'tur',
-      awayTeamId: 'par',
-      kickoffAt: '2026-06-19T23:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gd-5',
-      phase: 'groups',
-      groupName: 'Grupo D',
-      homeTeamId: 'tur',
-      awayTeamId: 'usa',
-      kickoffAt: '2026-06-25T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'gd-6',
-      phase: 'groups',
-      groupName: 'Grupo D',
-      homeTeamId: 'par',
-      awayTeamId: 'aus',
-      kickoffAt: '2026-06-25T23:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'r16-1',
-      phase: 'roundOf16',
-      groupName: null,
-      homeTeamId: 'arg',
-      awayTeamId: 'usa',
-      kickoffAt: '2026-07-03T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'r8-1',
-      phase: 'roundOf8',
-      groupName: null,
-      homeTeamId: 'arg',
-      awayTeamId: 'eng',
-      kickoffAt: '2026-07-09T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'r4-1',
-      phase: 'roundOf4',
-      groupName: null,
-      homeTeamId: 'bra',
-      awayTeamId: 'fra',
-      kickoffAt: '2026-07-14T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 's-1',
-      phase: 'semifinals',
-      groupName: null,
-      homeTeamId: 'arg',
-      awayTeamId: 'bra',
-      kickoffAt: '2026-07-18T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-    {
-      id: 'f-1',
-      phase: 'final',
-      groupName: null,
-      homeTeamId: 'arg',
-      awayTeamId: 'eng',
-      kickoffAt: '2026-07-22T20:00:00.000Z',
-      status: 'scheduled',
-      homeGoals: null,
-      awayGoals: null,
-      qualifiedTeamId: null,
-      manualOverride: false,
-    },
-  ]
-}
-
 function buildInitialState(): AppState {
   return {
     users: [],
-    matches: defaultMatches(),
+    matches: [],
     predictions: [],
     submissions: [],
     windowOverrides: [],
     lastLiveSyncAt: null,
   }
-}
-
-function readState(): AppState {
-  if (typeof window === 'undefined') {
-    return buildInitialState()
-  }
-
-  const raw = window.localStorage.getItem(STORAGE_KEY)
-  if (!raw) {
-    return buildInitialState()
-  }
-
-  try {
-    return JSON.parse(raw) as AppState
-  } catch {
-    return buildInitialState()
-  }
-}
-
-function persistState(state: AppState) {
-  if (typeof window === 'undefined') {
-    return
-  }
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-}
-
-function mapMatchDTO(match: MatchDTO): Match {
-  return {
-    id: match.id,
-    phase: match.phase,
-    groupName: match.groupName,
-    homeTeamId: match.homeTeamId,
-    awayTeamId: match.awayTeamId,
-    kickoffAt: match.kickoffAt,
-    status: match.status,
-    homeGoals: match.homeGoals,
-    awayGoals: match.awayGoals,
-    qualifiedTeamId: match.qualifiedTeamId,
-    manualOverride: match.manualOverride,
-    source: match.source,
-    externalMatchRef: match.externalMatchRef,
-  }
-}
-
-function mergeMatches(currentMatches: Match[], matchesFromDb: MatchDTO[]): Match[] {
-  const sanitizedMatches = matchesFromDb.map(mapMatchDTO)
-  return sanitizedMatches.length > 0 ? sanitizedMatches : currentMatches
 }
 
 function readSessionToken(): string | null {
@@ -515,149 +88,51 @@ function persistSessionToken(sessionToken: string | null) {
   window.localStorage.setItem(SESSION_TOKEN_KEY, sessionToken)
 }
 
-function applyAutomaticLiveStatus(state: AppState): AppState {
-  const now = new Date()
-  const matches = state.matches.map((match) => {
-    if (match.status === 'final') {
-      return match
-    }
-
-    const kickoff = new Date(match.kickoffAt).getTime()
-    const nowMs = now.getTime()
-
-    if (nowMs >= kickoff && nowMs < kickoff + MS_MATCH_WINDOW) {
-      return {
-        ...match,
-        status: 'live',
-      }
-    }
-
-    if (nowMs >= kickoff + MS_MATCH_WINDOW && match.homeGoals !== null && match.awayGoals !== null) {
-      return {
-        ...match,
-        status: 'final',
-      }
-    }
-
-    return match
-  })
-
+function mapMatchDTO(match: MatchDTO): Match {
   return {
-    ...state,
-    matches,
-    lastLiveSyncAt: now.toISOString(),
+    id: match.id,
+    phase: match.phase,
+    groupName: match.groupName,
+    homeTeamId: match.homeTeamId,
+    awayTeamId: match.awayTeamId,
+    kickoffAt: match.kickoffAt,
+    status: match.status,
+    homeGoals: match.homeGoals,
+    awayGoals: match.awayGoals,
+    qualifiedTeamId: match.qualifiedTeamId,
+    manualOverride: match.manualOverride,
+    source: match.source,
+    externalMatchRef: match.externalMatchRef,
   }
 }
 
-function applyAutoConfirm(state: AppState): AppState {
-  const now = new Date()
-  const newSubmissions = [...state.submissions]
-
-  for (const user of state.users) {
-    for (const phase of PHASE_ORDER) {
-      if (!isPhaseLocked(state, phase, now)) {
-        continue
-      }
-
-      if (wasPhaseConfirmed(newSubmissions, user.id, phase)) {
-        continue
-      }
-
-      const hasDraft = state.predictions.some(
-        (prediction) => prediction.userId === user.id && prediction.phase === phase,
-      )
-
-      if (!hasDraft) {
-        continue
-      }
-
-      newSubmissions.push({
-        userId: user.id,
-        phase,
-        confirmedAt: now.toISOString(),
-        autoConfirmed: true,
-      })
-    }
-  }
-
+function mapPredictionDTO(prediction: PredictionDTO): Prediction {
   return {
-    ...state,
-    submissions: newSubmissions,
+    userId: prediction.userId,
+    phase: prediction.phase,
+    matchId: prediction.matchId,
+    homeGoals: prediction.homeGoals,
+    awayGoals: prediction.awayGoals,
+    predictedQualifiedTeamId: prediction.predictedQualifiedTeamId,
+    updatedAt: prediction.updatedAt,
   }
 }
 
-function hasScorableFinalOutcome(
-  match: Match,
-): match is Match & { status: 'final'; homeGoals: number; awayGoals: number } {
-  if (match.status !== 'final') return false
-  if (match.homeGoals == null || match.awayGoals == null) return false
-  if (match.phase !== 'groups' && !match.qualifiedTeamId) return false
-  return true
+function mapSubmissionDTO(submission: PhaseSubmissionDTO): PhaseSubmission {
+  return {
+    userId: submission.userId,
+    phase: submission.phase,
+    confirmedAt: submission.confirmedAt,
+    autoConfirmed: submission.autoConfirmed,
+  }
 }
 
-function calculateLeaderboard(state: AppState): LeaderboardRow[] {
-  const rows: LeaderboardRow[] = state.users.map((user) => {
-    const userPredictions = state.predictions.filter((prediction) => prediction.userId === user.id)
-    const userSubmissions = state.submissions.filter((submission) => submission.userId === user.id)
-
-    let points = 0
-    let exactHits = 0
-
-    for (const prediction of userPredictions) {
-      const match = state.matches.find((item) => item.id === prediction.matchId)
-      if (!match || !hasScorableFinalOutcome(match)) {
-        continue
-      }
-
-      const isSubmitted = userSubmissions.some((submission) => submission.phase === prediction.phase)
-      if (!isSubmitted) {
-        continue
-      }
-
-      const gained = computeMatchPoints(
-        {
-          phase: match.phase,
-          homeGoals: match.homeGoals,
-          awayGoals: match.awayGoals,
-          qualifiedTeamId: match.qualifiedTeamId,
-        },
-        {
-          homeGoals: prediction.homeGoals,
-          awayGoals: prediction.awayGoals,
-          predictedQualifiedTeamId: prediction.predictedQualifiedTeamId,
-        },
-      )
-
-      points += gained
-
-      if (gained === 3) {
-        exactHits += 1
-      }
-    }
-
-    const firstConfirmedAt = userSubmissions
-      .map((submission) => submission.confirmedAt)
-      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] ?? null
-
-    return {
-      userId: user.id,
-      nickname: user.nickname,
-      teamId: user.teamId,
-      points,
-      exactHits,
-      firstConfirmedAt,
-    }
-  })
-
-  return rows.sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points
-    if (b.exactHits !== a.exactHits) return b.exactHits - a.exactHits
-
-    const aTs = a.firstConfirmedAt ? new Date(a.firstConfirmedAt).getTime() : Number.MAX_SAFE_INTEGER
-    const bTs = b.firstConfirmedAt ? new Date(b.firstConfirmedAt).getTime() : Number.MAX_SAFE_INTEGER
-
-    return aTs - bTs
-  })
+function mapWindowOverrideDTO(windowOverride: PhaseWindowOverrideDTO) {
+  return {
+    phase: windowOverride.phase,
+    opensAt: windowOverride.opensAt,
+    closesAt: windowOverride.closesAt,
+  }
 }
 
 function mapSessionUser(user: SessionUserDTO): User {
@@ -732,6 +207,20 @@ type SetResultInput = {
   status: 'scheduled' | 'live' | 'final'
 }
 
+type CreateMatchInput = {
+  id: string
+  phase: PhaseKey
+  groupName: string | null
+  homeTeamId: string
+  awayTeamId: string
+  kickoffAt: string
+  status: 'scheduled' | 'live' | 'final'
+  homeGoals: number | null
+  awayGoals: number | null
+  qualifiedTeamId: string | null
+  manualOverride?: boolean
+}
+
 type ActionResult = { ok: true } | { ok: false; message: string }
 
 type AppContextValue = {
@@ -746,11 +235,16 @@ type AppContextValue = {
   register: (payload: RegisterInput) => Promise<ActionResult>
   logout: () => void
   completeOnboarding: () => Promise<ActionResult>
-  savePrediction: (payload: SavePredictionInput) => { ok: true } | { ok: false; message: string }
-  confirmPhase: (phase: PhaseKey) => { ok: true } | { ok: false; message: string }
+  savePrediction: (payload: SavePredictionInput) => Promise<ActionResult>
+  confirmPhase: (phase: PhaseKey) => Promise<ActionResult>
   refreshLive: () => void
+  refreshMatches: () => Promise<void>
+  refreshQuinielaData: () => Promise<void>
+  refreshLeaderboard: () => Promise<void>
   setMatchResult: (payload: SetResultInput) => Promise<ActionResult>
-  setPhaseOverride: (phase: PhaseKey, opensAt: string, closesAt: string) => void
+  createMatch: (payload: CreateMatchInput) => Promise<ActionResult>
+  deleteMatch: (matchId: string) => Promise<ActionResult>
+  setPhaseOverride: (phase: PhaseKey, opensAt: string, closesAt: string) => Promise<ActionResult>
   resetUserPin: (userId: string, newPin: string) => Promise<ActionResult>
   softDeleteUser: (userId: string) => Promise<ActionResult>
   refreshUsers: () => Promise<void>
@@ -768,6 +262,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(buildInitialState)
   const [sessionToken, setSessionToken] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([])
 
   const refreshUsersWithSession = useCallback(async (token: string, isAdmin: boolean) => {
     if (isAdmin) {
@@ -780,7 +275,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      setState((prev) => applyAutoConfirm({ ...prev, users: adminListResponse.data.users.map(mapAdminUser) }))
+      setState((prev) => ({ ...prev, users: adminListResponse.data.users.map(mapAdminUser) }))
       return
     }
 
@@ -793,32 +288,95 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    setState((prev) => applyAutoConfirm({ ...prev, users: basicListResponse.data.users.map(mapBasicUser) }))
+    setState((prev) => ({ ...prev, users: basicListResponse.data.users.map(mapBasicUser) }))
   }, [])
+
+  const refreshMatches = useCallback(async () => {
+    const [matchesResponse, windowsResponse] = await Promise.all([
+      invokeQuinielasAction<{ limit: number }, ListMatchesResultDTO>('list_matches', { limit: 512 }),
+      invokeQuinielasAction<Record<string, never>, ListPhaseWindowOverridesResultDTO>(
+        'list_phase_window_overrides',
+        {},
+      ),
+    ])
+
+    if (!matchesResponse.ok) {
+      return
+    }
+
+    setState((prev) => ({
+      ...prev,
+      matches: matchesResponse.data.matches.map(mapMatchDTO),
+      windowOverrides: windowsResponse.ok
+        ? windowsResponse.data.windowOverrides.map(mapWindowOverrideDTO)
+        : prev.windowOverrides,
+      lastLiveSyncAt: new Date().toISOString(),
+    }))
+  }, [])
+
+  const refreshQuinielaDataWithToken = useCallback(async (token: string) => {
+    const [predictionsResponse, submissionsResponse] = await Promise.all([
+      invokeAuthenticatedQuinielasAction<{ phase?: PhaseKey }, ListMyPredictionsResultDTO>(
+        'list_my_predictions',
+        token,
+        {},
+      ),
+      invokeAuthenticatedQuinielasAction<{ phase?: PhaseKey }, ListMyPhaseSubmissionsResultDTO>(
+        'list_my_phase_submissions',
+        token,
+        {},
+      ),
+    ])
+
+    setState((prev) => ({
+      ...prev,
+      predictions: predictionsResponse.ok ? predictionsResponse.data.predictions.map(mapPredictionDTO) : [],
+      submissions: submissionsResponse.ok ? submissionsResponse.data.submissions.map(mapSubmissionDTO) : [],
+    }))
+  }, [])
+
+  const refreshQuinielaData = useCallback(async () => {
+    if (!sessionToken) {
+      setState((prev) => ({ ...prev, predictions: [], submissions: [] }))
+      return
+    }
+
+    await refreshQuinielaDataWithToken(sessionToken)
+  }, [refreshQuinielaDataWithToken, sessionToken])
+
+  const refreshLeaderboardWithToken = useCallback(async (token: string) => {
+    const response = await invokeAuthenticatedQuinielasAction<Record<string, never>, ListLeaderboardResultDTO>(
+      'list_leaderboard',
+      token,
+      {},
+    )
+
+    if (!response.ok) {
+      setLeaderboard([])
+      return
+    }
+
+    setLeaderboard(response.data.leaderboard as LeaderboardRowDTO[])
+  }, [])
+
+  const refreshLeaderboard = useCallback(async () => {
+    if (!sessionToken) {
+      setLeaderboard([])
+      return
+    }
+
+    await refreshLeaderboardWithToken(sessionToken)
+  }, [refreshLeaderboardWithToken, sessionToken])
 
   useEffect(() => {
     let cancelled = false
 
     async function bootstrap() {
-      let loaded = applyAutoConfirm(readState())
-
-      const matchesResponse = await invokeQuinielasAction<{ limit: number }, ListMatchesResultDTO>('list_matches', {
-        limit: 256,
-      })
-
-      if (matchesResponse.ok) {
-        loaded = {
-          ...loaded,
-          matches: mergeMatches(loaded.matches, matchesResponse.data.matches),
-        }
-      }
-
-      if (cancelled) return
-      setState(loaded)
+      await refreshMatches()
 
       const storedToken = readSessionToken()
       if (!storedToken) {
-        setReady(true)
+        if (!cancelled) setReady(true)
         return
       }
 
@@ -831,6 +389,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!meResponse.ok) {
         setSessionToken(null)
         setCurrentUser(null)
+        setLeaderboard([])
         setReady(true)
         return
       }
@@ -838,9 +397,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const meUser = mapSessionUser(meResponse.data.user)
       setSessionToken(storedToken)
       setCurrentUser(meUser)
-      await refreshUsersWithSession(storedToken, meUser.isAdmin)
-      if (cancelled) return
-      setReady(true)
+
+      await Promise.all([
+        refreshUsersWithSession(storedToken, meUser.isAdmin),
+        refreshQuinielaDataWithToken(storedToken),
+        refreshLeaderboardWithToken(storedToken),
+      ])
+
+      if (!cancelled) setReady(true)
     }
 
     void bootstrap()
@@ -848,12 +412,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [refreshUsersWithSession])
-
-  useEffect(() => {
-    if (!ready) return
-    persistState(state)
-  }, [ready, state])
+  }, [refreshLeaderboardWithToken, refreshMatches, refreshQuinielaDataWithToken, refreshUsersWithSession])
 
   useEffect(() => {
     if (!ready) return
@@ -865,12 +424,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return getActivePhase(state, now)
   }, [ready, state])
 
-  const leaderboard = useMemo(() => calculateLeaderboard(state), [state])
-
   const teamsById = useMemo(() => {
     const output: Record<string, string> = {}
     for (const user of state.users) {
-      output[user.id] = getTeam(user.teamId).flag
+      output[user.id] = user.teamId
     }
     return output
   }, [state.users])
@@ -918,10 +475,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const signedUser = mapSessionUser(registerResponse.data.user)
     setSessionToken(registerResponse.data.sessionToken)
     setCurrentUser(signedUser)
-    await refreshUsersWithSession(registerResponse.data.sessionToken, signedUser.isAdmin)
+
+    await Promise.all([
+      refreshUsersWithSession(registerResponse.data.sessionToken, signedUser.isAdmin),
+      refreshQuinielaDataWithToken(registerResponse.data.sessionToken),
+      refreshLeaderboardWithToken(registerResponse.data.sessionToken),
+    ])
 
     return { ok: true }
-  }, [refreshUsersWithSession])
+  }, [refreshLeaderboardWithToken, refreshQuinielaDataWithToken, refreshUsersWithSession])
 
   const login = useCallback(async (payload: LoginInput): Promise<ActionResult> => {
     if (!isPinValid(payload.pin)) {
@@ -943,13 +505,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const signedUser = mapSessionUser(loginResponse.data.user)
     setSessionToken(loginResponse.data.sessionToken)
     setCurrentUser(signedUser)
-    await refreshUsersWithSession(loginResponse.data.sessionToken, signedUser.isAdmin)
+
+    await Promise.all([
+      refreshUsersWithSession(loginResponse.data.sessionToken, signedUser.isAdmin),
+      refreshMatches(),
+      refreshQuinielaDataWithToken(loginResponse.data.sessionToken),
+      refreshLeaderboardWithToken(loginResponse.data.sessionToken),
+    ])
+
     return { ok: true }
-  }, [refreshUsersWithSession])
+  }, [refreshLeaderboardWithToken, refreshMatches, refreshQuinielaDataWithToken, refreshUsersWithSession])
 
   const logout = useCallback(() => {
     setSessionToken(null)
     setCurrentUser(null)
+    setLeaderboard([])
+    setState((prev) => ({ ...prev, predictions: [], submissions: [] }))
   }, [])
 
   const completeOnboarding = useCallback(async (): Promise<ActionResult> => {
@@ -1005,85 +576,99 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return isPhaseEditableAtNow(phase)
   }, [ready, currentUser, activePhase, state.submissions, isPhaseEditableAtNow])
 
-  const savePrediction = useCallback((payload: SavePredictionInput) => {
+  const savePrediction = useCallback(async (payload: SavePredictionInput): Promise<ActionResult> => {
     if (!currentUser) {
       return { ok: false as const, message: 'Debes iniciar sesion.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false as const, message: 'Sesion invalida. Inicia sesion de nuevo.' }
     }
 
     if (!canEditPhase(payload.phase)) {
       return { ok: false as const, message: 'No puedes editar esa fase ahora.' }
     }
 
+    const createResponse = await invokeAuthenticatedQuinielasAction<
+      SavePredictionInput,
+      { prediction: PredictionDTO }
+    >('create_prediction', sessionToken, payload)
+
+    const response =
+      createResponse.ok || createResponse.error.code !== 'CONFLICT'
+        ? createResponse
+        : await invokeAuthenticatedQuinielasAction<SavePredictionInput, { prediction: PredictionDTO }>(
+            'update_prediction',
+            sessionToken,
+            payload,
+          )
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    const updatedPrediction = mapPredictionDTO(response.data.prediction)
     setState((prev) => {
-      const next = [...prev.predictions]
-      const existingIndex = next.findIndex(
+      const nextPredictions = [...prev.predictions]
+      const existingIndex = nextPredictions.findIndex(
         (item) =>
           item.userId === currentUser.id &&
           item.phase === payload.phase &&
           item.matchId === payload.matchId,
       )
 
-      const base: Prediction = {
-        userId: currentUser.id,
-        phase: payload.phase,
-        matchId: payload.matchId,
-        homeGoals: payload.homeGoals,
-        awayGoals: payload.awayGoals,
-        predictedQualifiedTeamId: payload.predictedQualifiedTeamId,
-        updatedAt: nowIso(),
-      }
-
       if (existingIndex >= 0) {
-        next[existingIndex] = base
+        nextPredictions[existingIndex] = updatedPrediction
       } else {
-        next.push(base)
+        nextPredictions.push(updatedPrediction)
       }
 
       return {
         ...prev,
-        predictions: next,
+        predictions: nextPredictions,
       }
     })
 
-    return { ok: true as const }
-  }, [canEditPhase, currentUser])
+    return { ok: true }
+  }, [canEditPhase, currentUser, sessionToken])
 
-  const confirmPhase = useCallback((phase: PhaseKey) => {
+  const confirmPhase = useCallback(async (phase: PhaseKey): Promise<ActionResult> => {
     if (!currentUser) {
       return { ok: false as const, message: 'Debes iniciar sesion.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false as const, message: 'Sesion invalida. Inicia sesion de nuevo.' }
     }
 
     if (!canEditPhase(phase)) {
       return { ok: false as const, message: 'Esta fase ya no se puede confirmar.' }
     }
 
-    const hasPredictions = state.predictions.some(
-      (prediction) => prediction.userId === currentUser.id && prediction.phase === phase,
-    )
+    const response = await invokeAuthenticatedQuinielasAction<
+      { phase: PhaseKey },
+      { submission: PhaseSubmissionDTO }
+    >('create_phase_submission', sessionToken, { phase })
 
-    if (!hasPredictions) {
-      return { ok: false as const, message: 'Debes guardar al menos un partido.' }
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
     }
+
+    const submission = mapSubmissionDTO(response.data.submission)
 
     setState((prev) => ({
       ...prev,
-      submissions: [
-        ...prev.submissions,
-        {
-          userId: currentUser.id,
-          phase,
-          confirmedAt: nowIso(),
-          autoConfirmed: false,
-        },
-      ],
+      submissions: [...prev.submissions.filter((item) => !(item.userId === submission.userId && item.phase === submission.phase)), submission],
     }))
 
-    return { ok: true as const }
-  }, [canEditPhase, currentUser, state.predictions])
+    await refreshLeaderboard()
+
+    return { ok: true }
+  }, [canEditPhase, currentUser, refreshLeaderboard, sessionToken])
 
   const refreshLive = useCallback(() => {
-    setState((prev) => applyAutoConfirm(applyAutomaticLiveStatus(prev)))
-  }, [])
+    void refreshMatches()
+  }, [refreshMatches])
 
   const setMatchResult = useCallback(async (payload: SetResultInput): Promise<ActionResult> => {
     if (!currentUser?.isAdmin) {
@@ -1123,23 +708,102 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       matches: prev.matches.map((match) => (match.id === payload.matchId ? updatedMatch : match)),
     }))
 
+    await refreshLeaderboard()
+
+    return { ok: true }
+  }, [currentUser?.isAdmin, refreshLeaderboard, sessionToken])
+
+  const createMatch = useCallback(async (payload: CreateMatchInput): Promise<ActionResult> => {
+    if (!currentUser?.isAdmin) {
+      return { ok: false, message: 'Solo admin puede crear partidos.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    const response = await invokeAdminQuinielasAction<CreateMatchInput, { match: MatchDTO }>('create_match', sessionToken, {
+      ...payload,
+      manualOverride: payload.manualOverride ?? true,
+    })
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    setState((prev) => ({
+      ...prev,
+      matches: [...prev.matches, mapMatchDTO(response.data.match)].sort(
+        (a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime(),
+      ),
+    }))
+
     return { ok: true }
   }, [currentUser?.isAdmin, sessionToken])
 
-  const setPhaseOverride = useCallback((phase: PhaseKey, opensAt: string, closesAt: string) => {
+  const deleteMatch = useCallback(async (matchId: string): Promise<ActionResult> => {
     if (!currentUser?.isAdmin) {
-      return
+      return { ok: false, message: 'Solo admin puede eliminar partidos.' }
     }
+
+    if (!sessionToken) {
+      return { ok: false, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    const response = await invokeAdminQuinielasAction<{ id: string }, { match: MatchDTO }>('delete_match', sessionToken, {
+      id: matchId,
+    })
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    setState((prev) => ({
+      ...prev,
+      matches: prev.matches.filter((match) => match.id !== matchId),
+      predictions: prev.predictions.filter((prediction) => prediction.matchId !== matchId),
+    }))
+
+    await refreshLeaderboard()
+
+    return { ok: true }
+  }, [currentUser?.isAdmin, refreshLeaderboard, sessionToken])
+
+  const setPhaseOverride = useCallback(async (phase: PhaseKey, opensAt: string, closesAt: string): Promise<ActionResult> => {
+    if (!currentUser?.isAdmin) {
+      return { ok: false, message: 'Solo admin puede actualizar ventanas.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    const response = await invokeAdminQuinielasAction<
+      { phase: PhaseKey; opensAt: string; closesAt: string },
+      { windowOverride: PhaseWindowOverrideDTO }
+    >('create_phase_window_override', sessionToken, {
+      phase,
+      opensAt,
+      closesAt,
+    })
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    const mapped = mapWindowOverrideDTO(response.data.windowOverride)
 
     setState((prev) => {
       const next = prev.windowOverrides.filter((item) => item.phase !== phase)
-      next.push({ phase, opensAt, closesAt })
+      next.push(mapped)
       return {
         ...prev,
         windowOverrides: next,
       }
     })
-  }, [currentUser?.isAdmin])
+
+    return { ok: true }
+  }, [currentUser?.isAdmin, sessionToken])
 
   const resetUserPin = useCallback(async (userId: string, newPin: string): Promise<ActionResult> => {
     if (!currentUser?.isAdmin) {
@@ -1198,9 +862,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submissions: prev.submissions.filter((submission) => submission.userId !== userId),
     }))
 
-    await refreshUsersWithSession(sessionToken, true)
+    await Promise.all([
+      refreshUsersWithSession(sessionToken, true),
+      refreshLeaderboard(),
+    ])
+
     return { ok: true }
-  }, [currentUser?.isAdmin, refreshUsersWithSession, sessionToken])
+  }, [currentUser?.isAdmin, refreshLeaderboard, refreshUsersWithSession, sessionToken])
 
   const isPhaseConfirmed = useCallback((phase: PhaseKey) => {
     if (!currentUser) return false
@@ -1231,7 +899,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     savePrediction,
     confirmPhase,
     refreshLive,
+    refreshMatches,
+    refreshQuinielaData,
+    refreshLeaderboard,
     setMatchResult,
+    createMatch,
+    deleteMatch,
     setPhaseOverride,
     resetUserPin,
     softDeleteUser,
