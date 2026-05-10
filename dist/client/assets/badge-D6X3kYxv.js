@@ -1,0 +1,1 @@
+import{b as e,m as t,t as n}from"./cn-wL4mxqhG.js";e();var r=t();function i({className:e,...t}){return(0,r.jsx)(`span`,{className:n(`inline-flex items-center rounded-full bg-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-700`,e),...t})}export{i as t};

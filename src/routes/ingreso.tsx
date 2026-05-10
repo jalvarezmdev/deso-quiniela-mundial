@@ -1,0 +1,205 @@
+import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router'
+import { useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
+import { Card } from '#/components/ui/card'
+import { Input } from '#/components/ui/input'
+import { Label } from '#/components/ui/label'
+import { Button } from '#/components/ui/button'
+import { useApp } from '#/context/app-context'
+import { TEAMS } from '#/lib/teams'
+
+export const Route = createFileRoute('/ingreso')({
+  component: IngresoPage,
+})
+
+function IngresoPage() {
+  const { currentUser, register, login } = useApp()
+  const navigate = useNavigate()
+  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [error, setError] = useState<string | null>(null)
+
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPin, setLoginPin] = useState('')
+
+  const [email, setEmail] = useState('')
+  const [nickname, setNickname] = useState('')
+  const [teamId, setTeamId] = useState(TEAMS[0]?.id ?? 'arg')
+  const [secretPhrase, setSecretPhrase] = useState('')
+  const [pin, setPin] = useState('')
+
+  const teams = useMemo(() => TEAMS, [])
+
+  if (currentUser) {
+    return <Navigate to={currentUser.onboardingCompleted ? '/' : '/onboarding'} />
+  }
+
+  function onRegisterSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError(null)
+
+    const result = register({
+      email,
+      nickname,
+      teamId,
+      pin,
+      secretPhrase,
+    })
+
+    if (!result.ok) {
+      setError(result.message)
+      return
+    }
+
+    navigate({ to: '/onboarding' })
+  }
+
+  function onLoginSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError(null)
+
+    const result = login({
+      email: loginEmail,
+      pin: loginPin,
+    })
+
+    if (!result.ok) {
+      setError(result.message)
+      return
+    }
+
+    navigate({ to: '/' })
+  }
+
+  return (
+    <main className="mx-auto grid min-h-[calc(100vh-136px)] w-full max-w-6xl items-center gap-8 px-4 py-8 lg:grid-cols-2">
+      <section>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+          Quiniela Mundial 2026
+        </p>
+        <h1 className="mt-2 text-4xl font-black tracking-tight text-[var(--primary)]">
+          Organiza tus rondas, confirma tu quiniela y compite por puntos.
+        </h1>
+        <p className="mt-4 text-sm text-zinc-600">
+          Flujo cerrado por fases: grupos, 16vos, 8vos, 4tos, semis y final. Cada fase se
+          bloquea al iniciar su primer partido.
+        </p>
+      </section>
+
+      <Card className="p-6">
+        <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg bg-zinc-100 p-1">
+          <button
+            type="button"
+            onClick={() => setMode('login')}
+            className={`rounded-md px-3 py-2 text-sm font-semibold ${
+              mode === 'login' ? 'bg-white text-[var(--primary)] shadow-sm' : 'text-zinc-600'
+            }`}
+          >
+            Ingresar
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('register')}
+            className={`rounded-md px-3 py-2 text-sm font-semibold ${
+              mode === 'register' ? 'bg-white text-[var(--primary)] shadow-sm' : 'text-zinc-600'
+            }`}
+          >
+            Registrarse
+          </button>
+        </div>
+
+        {error ? <p className="mb-3 rounded-md bg-red-100 p-2 text-sm text-red-700">{error}</p> : null}
+
+        {mode === 'login' ? (
+          <form className="space-y-3" onSubmit={onLoginSubmit}>
+            <div>
+              <Label htmlFor="loginEmail">Correo</Label>
+              <Input
+                id="loginEmail"
+                type="email"
+                value={loginEmail}
+                onChange={(event) => setLoginEmail(event.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="loginPin">PIN numerico (6 digitos)</Label>
+              <Input
+                id="loginPin"
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                value={loginPin}
+                onChange={(event) => setLoginPin(event.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full">
+              Ingresar
+            </Button>
+          </form>
+        ) : (
+          <form className="space-y-3" onSubmit={onRegisterSubmit}>
+            <div>
+              <Label htmlFor="registerEmail">Correo</Label>
+              <Input
+                id="registerEmail"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="registerNickname">Nombre o apodo</Label>
+              <Input
+                id="registerNickname"
+                value={nickname}
+                onChange={(event) => setNickname(event.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="registerTeam">Avatar de seleccion</Label>
+              <select
+                id="registerTeam"
+                value={teamId}
+                onChange={(event) => setTeamId(event.target.value)}
+                className="h-10 w-full rounded-md border border-[var(--line)] bg-white px-3 text-sm"
+              >
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.flag} {team.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="registerSecret">Palabra secreta</Label>
+              <Input
+                id="registerSecret"
+                value={secretPhrase}
+                onChange={(event) => setSecretPhrase(event.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="registerPin">Contrasena numerica (6 digitos)</Label>
+              <Input
+                id="registerPin"
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                value={pin}
+                onChange={(event) => setPin(event.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full">
+              Crear cuenta
+            </Button>
+          </form>
+        )}
+      </Card>
+    </main>
+  )
+}
