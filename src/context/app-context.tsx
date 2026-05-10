@@ -235,6 +235,7 @@ type AppContextValue = {
   register: (payload: RegisterInput) => Promise<ActionResult>
   logout: () => void
   completeOnboarding: () => Promise<ActionResult>
+  updateFavoriteTeam: (teamId: string) => Promise<ActionResult>
   savePrediction: (payload: SavePredictionInput) => Promise<ActionResult>
   confirmPhase: (phase: PhaseKey) => Promise<ActionResult>
   refreshLive: () => void
@@ -263,6 +264,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sessionToken, setSessionToken] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([])
+
+  const syncSignedUser = useCallback((updatedUser: SessionUserDTO) => {
+    const updated = mapSessionUser(updatedUser)
+    setCurrentUser(updated)
+    setState((prev) => ({
+      ...prev,
+      users: prev.users.map((user) =>
+        user.id === updated.id
+          ? {
+              ...user,
+              nickname: updated.nickname,
+              teamId: updated.teamId,
+              onboardingCompleted: updated.onboardingCompleted,
+              email: updated.email,
+              isAdmin: updated.isAdmin,
+              lastLoginAt: updated.lastLoginAt,
+            }
+          : user,
+      ),
+    }))
+    setLeaderboard((prev) =>
+      prev.map((row) =>
+        row.userId === updated.id
+          ? {
+              ...row,
+              teamId: updated.teamId,
+              nickname: updated.nickname,
+            }
+          : row,
+      ),
+    )
+  }, [])
 
   const refreshUsersWithSession = useCallback(async (token: string, isAdmin: boolean) => {
     if (isAdmin) {
@@ -540,27 +573,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return formatUsersError(updateResponse.error.message)
     }
 
-    const updated = mapSessionUser(updateResponse.data.user)
-    setCurrentUser(updated)
-    setState((prev) => ({
-      ...prev,
-      users: prev.users.map((user) =>
-        user.id === updated.id
-          ? {
-              ...user,
-              nickname: updated.nickname,
-              teamId: updated.teamId,
-              onboardingCompleted: updated.onboardingCompleted,
-              email: updated.email,
-              isAdmin: updated.isAdmin,
-              lastLoginAt: updated.lastLoginAt,
-            }
-          : user,
-      ),
-    }))
+    syncSignedUser(updateResponse.data.user)
 
     return { ok: true }
-  }, [currentUser, sessionToken])
+  }, [currentUser, sessionToken, syncSignedUser])
+
+  const updateFavoriteTeam = useCallback(async (teamId: string): Promise<ActionResult> => {
+    if (!currentUser || !sessionToken) {
+      return formatUsersError('Debes iniciar sesion.')
+    }
+
+    const normalizedTeamId = teamId.trim()
+    if (!normalizedTeamId) {
+      return formatUsersError('Equipo invalido.')
+    }
+
+    if (normalizedTeamId === currentUser.teamId) {
+      return { ok: true }
+    }
+
+    const updateResponse = await invokeUsersAction<
+      { sessionToken: string; teamId: string },
+      { user: SessionUserDTO }
+    >('update_me', {
+      sessionToken,
+      teamId: normalizedTeamId,
+    })
+
+    if (!updateResponse.ok) {
+      return formatUsersError(updateResponse.error.message)
+    }
+
+    syncSignedUser(updateResponse.data.user)
+
+    return { ok: true }
+  }, [currentUser, sessionToken, syncSignedUser])
 
   const canEditPhase = useCallback((phase: PhaseKey) => {
     if (!ready || !currentUser) return false
@@ -896,6 +943,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     login,
     logout,
     completeOnboarding,
+    updateFavoriteTeam,
     savePrediction,
     confirmPhase,
     refreshLive,

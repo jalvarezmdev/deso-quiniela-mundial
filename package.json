@@ -10,7 +10,8 @@
     "build": "vite build",
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "supabase:functions:deploy": "npx supabase functions deploy --project-ref gkzzioxyulibwvdvkjmy"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",

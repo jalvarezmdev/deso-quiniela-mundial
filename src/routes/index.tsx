@@ -1,9 +1,12 @@
 import { Link, Navigate, createFileRoute } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { toast } from 'react-hot-toast'
 import { RequireAuth } from '#/components/layout/require-auth'
+import { Button } from '#/components/ui/button'
 import { Card } from '#/components/ui/card'
 import { useApp } from '#/context/app-context'
 import { toVenDateTimeLabel } from '#/lib/time'
-import { getTeam } from '#/lib/teams'
+import { TEAMS, getTeam } from '#/lib/teams'
 import type { Match, MatchStatus } from '#/lib/types'
 
 export const Route = createFileRoute('/')({
@@ -11,7 +14,15 @@ export const Route = createFileRoute('/')({
 })
 
 function HomePage() {
-  const { currentUser, state, leaderboard } = useApp()
+  const { currentUser, state, leaderboard, updateFavoriteTeam } = useApp()
+  const [selectedTeamId, setSelectedTeamId] = useState(currentUser?.teamId ?? TEAMS[0]?.id ?? 'arg')
+  const [savingFavorite, setSavingFavorite] = useState(false)
+  const [isChangeFavoriteOpen, setIsChangeFavoriteOpen] = useState(false)
+
+  useEffect(() => {
+    if (!currentUser) return
+    setSelectedTeamId(currentUser.teamId)
+  }, [currentUser])
 
   if (!currentUser) {
     return <Navigate to="/ingreso" />
@@ -118,10 +129,24 @@ function HomePage() {
         ) : (
           <section className="mt-6 grid gap-4 lg:grid-cols-2">
             <Card className="border-[rgba(111,0,255,0.38)] bg-[linear-gradient(180deg,rgba(14,18,30,0.94)_0%,rgba(12,17,25,0.94)_100%)]">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Tu equipo favorito</p>
-              <h2 className="mt-1 text-2xl font-black text-white">
-                {favoriteTeam.flag} {favoriteTeam.name}
-              </h2>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-zinc-400">Tu equipo favorito</p>
+                  <h2 className="mt-1 text-2xl font-black text-white">
+                    {favoriteTeam.flag} {favoriteTeam.name}
+                  </h2>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedTeamId(currentUser.teamId)
+                    setIsChangeFavoriteOpen(true)
+                  }}
+                >
+                  Cambiar
+                </Button>
+              </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <MatchDetailCard title="Ultimo resultado" match={favoriteLatestFinal} emptyLabel="Sin partidos finalizados" />
                 <MatchDetailCard title="Siguiente partido" match={favoriteNextMatch} emptyLabel="No hay proximos partidos" />
@@ -162,6 +187,66 @@ function HomePage() {
             </Card>
           </section>
         )}
+
+        {isChangeFavoriteOpen ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => {
+              if (savingFavorite) return
+              setIsChangeFavoriteOpen(false)
+            }}
+          >
+            <Card className="w-full max-w-md p-6" onClick={(event) => event.stopPropagation()}>
+              <h2 className="text-xl font-black text-[var(--primary)]">Cambiar pais favorito</h2>
+              <p className="mt-2 text-sm text-zinc-300">
+                Selecciona tu equipo y confirma para actualizar tu perfil.
+              </p>
+
+              <div className="mt-4">
+                <select
+                  value={selectedTeamId}
+                  onChange={(event) => setSelectedTeamId(event.target.value)}
+                  disabled={savingFavorite}
+                  className="h-10 w-full rounded-md border border-[var(--line)] bg-[var(--secondary)] px-3 text-sm text-white"
+                >
+                  {TEAMS.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.flag} {team.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mt-5 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsChangeFavoriteOpen(false)}
+                  disabled={savingFavorite}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  disabled={savingFavorite || selectedTeamId === currentUser.teamId}
+                  onClick={async () => {
+                    setSavingFavorite(true)
+                    const result = await updateFavoriteTeam(selectedTeamId)
+                    setSavingFavorite(false)
+                    if (!result.ok) {
+                      toast.error(result.message)
+                      return
+                    }
+                    toast.success('Pais favorito actualizado.')
+                    setIsChangeFavoriteOpen(false)
+                  }}
+                >
+                  {savingFavorite ? 'Guardando...' : 'Guardar'}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        ) : null}
       </main>
     </RequireAuth>
   )
