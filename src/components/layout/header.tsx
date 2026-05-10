@@ -74,7 +74,7 @@ export function Header() {
           <div className="ml-auto">
             <Link
               to="/ingreso"
-              className="rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white no-underline"
+              className="rounded-md bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-zinc-900 no-underline"
             >
               Ingresar
             </Link>

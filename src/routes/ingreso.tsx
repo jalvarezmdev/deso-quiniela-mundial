@@ -80,7 +80,8 @@ function IngresoPage() {
   return (
     <main className="mx-auto grid min-h-[calc(100vh-136px)] w-full max-w-6xl items-center gap-8 px-4 py-8 lg:grid-cols-2">
       <section>
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+        <img alt="logo" src="/desocupaos-white.png" className="w-48 mb-6" />
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]/60">
           Quiniela Mundial 2026
         </p>
         <h1 className="mt-2 text-4xl font-black tracking-tight text-[var(--primary)]">
