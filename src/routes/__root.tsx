@@ -39,7 +39,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <AppProvider>
           <div className="flex min-h-screen flex-col">
             <Header />
-            <div className="relative flex-1 overflow-hidden">
+            <div className="relative flex-1 overflow-hidden pb-20 md:pb-0">
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 -z-10"

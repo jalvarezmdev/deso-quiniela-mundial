@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import { BarChart3, Home, LogOut, Settings, Trophy, UserCircle2 } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import { PHASES } from '#/lib/types'
 import { useApp } from '#/context/app-context'
@@ -9,10 +10,21 @@ export function Header() {
   const navigate = useNavigate()
 
   const phaseLabel = PHASES.find((phase) => phase.key === activePhase)?.label ?? activePhase
+  const navItems = [
+    { to: '/', label: 'Inicio', icon: Home },
+    { to: '/resultados', label: 'Resultados', icon: Trophy },
+    { to: '/posiciones', label: 'Posiciones', icon: BarChart3 },
+    { to: '/quiniela', label: 'Quiniela', icon: UserCircle2 },
+  ] as const
+
+  const allNavItems = currentUser?.isAdmin
+    ? [...navItems, { to: '/admin', label: 'Admin', icon: Settings }]
+    : navItems
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--secondary)]/95 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3">
+    <>
+      <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--secondary)]/95 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3">
         <Link to="/" className="inline-flex items-center no-underline">
           <img src="/desocupaos-white.png" alt="Deso Cupaos" className="h-10 w-auto md:h-12" />
         </Link>
@@ -20,40 +32,24 @@ export function Header() {
         {currentUser ? (
           <>
             <nav className="ml-4 hidden items-center gap-2 md:flex">
-              {[
-                ['/', 'Inicio'],
-                ['/resultados', 'Resultados'],
-                ['/posiciones', 'Posiciones'],
-                ['/quiniela', 'Montar quiniela'],
-              ].map(([href, label]) => (
+              {allNavItems.map(({ to, label, icon: Icon }) => (
                 <Link
-                  key={href}
-                  to={href}
-                  className={`rounded-md px-3 py-2 text-sm font-medium no-underline transition ${
-                    location.pathname === href
-                      ? 'bg-[var(--accent)] text-zinc-900'
-                      : 'text-white hover:bg-zinc-800'
+                  key={to}
+                  to={to}
+                  className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium no-underline transition ${
+                    location.pathname === to
+                      ? 'bg-white text-zinc-900'
+                      : 'text-zinc-200 hover:bg-white/10 hover:text-white'
                   }`}
                 >
+                  <Icon size={16} />
                   {label}
                 </Link>
               ))}
-              {currentUser.isAdmin ? (
-                <Link
-                  to="/admin"
-                  className={`rounded-md px-3 py-2 text-sm font-medium no-underline transition ${
-                    location.pathname === '/admin'
-                      ? 'bg-[var(--accent)] text-zinc-900'
-                      : 'text-white hover:bg-zinc-800'
-                  }`}
-                >
-                  Admin
-                </Link>
-              ) : null}
             </nav>
 
             <div className="ml-auto flex items-center gap-2">
-              <span className="hidden text-xs text-zinc-300 sm:inline">
+              <span className="hidden text-xs text-zinc-300 lg:inline">
                 Fase activa: <strong>{phaseLabel}</strong>
               </span>
               <span className="rounded-full bg-zinc-800 px-3 py-1 text-sm font-semibold text-zinc-200">
@@ -66,6 +62,7 @@ export function Header() {
                   navigate({ to: '/ingreso' })
                 }}
               >
+                <LogOut size={16} />
                 Salir
               </Button>
             </div>
@@ -80,7 +77,29 @@ export function Header() {
             </Link>
           </div>
         )}
-      </div>
-    </header>
+        </div>
+      </header>
+
+      {currentUser ? (
+        <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--line)] bg-[var(--secondary)]/95 px-2 py-2 backdrop-blur md:hidden">
+          <div className="mx-auto flex w-full max-w-md items-center justify-between gap-1">
+            {allNavItems.map(({ to, label, icon: Icon }) => (
+              <Link
+                key={to}
+                to={to}
+                className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2 text-[11px] font-medium leading-none no-underline transition ${
+                  location.pathname === to
+                    ? 'bg-white text-zinc-900'
+                    : 'text-zinc-200 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <Icon size={18} />
+                <span className="truncate">{label}</span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+      ) : null}
+    </>
   )
 }
