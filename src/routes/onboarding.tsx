@@ -4,6 +4,7 @@ import { RequireAuth } from '#/components/layout/require-auth'
 import { PageShell } from '#/components/layout/page-shell'
 import { Card } from '#/components/ui/card'
 import { Button } from '#/components/ui/button'
+import { LoadingScreen } from '#/components/layout/loading-screen'
 import { useApp } from '#/context/app-context'
 
 export const Route = createFileRoute('/onboarding')({
@@ -26,11 +27,15 @@ const slides = [
 ]
 
 function OnboardingPage() {
-  const { currentUser, completeOnboarding } = useApp()
+  const { authResolved, currentUser, completeOnboarding } = useApp()
   const navigate = useNavigate()
   const [index, setIndex] = useState(0)
   const [notice, setNotice] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  if (!authResolved) {
+    return <LoadingScreen />
+  }
 
   if (!currentUser) {
     return <Navigate to="/ingreso" />

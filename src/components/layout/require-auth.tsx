@@ -1,11 +1,16 @@
 import { Navigate } from '@tanstack/react-router'
 import { useApp } from '#/context/app-context'
+import { LoadingScreen } from '#/components/layout/loading-screen'
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { ready, currentUser } = useApp()
+  const { authResolved, ready, currentUser } = useApp()
+
+  if (!authResolved) {
+    return <LoadingScreen />
+  }
 
   if (!ready) {
-    return <div className="mx-auto max-w-6xl px-4 py-10 text-sm text-zinc-300">Cargando...</div>
+    return <LoadingScreen />
   }
 
   if (!currentUser) {
@@ -16,10 +21,14 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 export function RequireAdmin({ children }: { children: React.ReactNode }) {
-  const { ready, currentUser } = useApp()
+  const { authResolved, ready, currentUser } = useApp()
+
+  if (!authResolved) {
+    return <LoadingScreen />
+  }
 
   if (!ready) {
-    return <div className="mx-auto max-w-6xl px-4 py-10 text-sm text-zinc-300">Cargando...</div>
+    return <LoadingScreen />
   }
 
   if (!currentUser) {

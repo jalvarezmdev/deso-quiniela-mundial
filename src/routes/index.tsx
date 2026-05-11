@@ -4,6 +4,8 @@ import { toast } from 'react-hot-toast'
 import { RequireAuth } from '#/components/layout/require-auth'
 import { Button } from '#/components/ui/button'
 import { Card } from '#/components/ui/card'
+import { QualifiedTeamSelect } from '#/components/ui/qualified-team-select'
+import { LoadingScreen } from '#/components/layout/loading-screen'
 import { useApp } from '#/context/app-context'
 import { toVenDateTimeLabel } from '#/lib/time'
 import { TEAMS, getTeam } from '#/lib/teams'
@@ -14,15 +16,21 @@ export const Route = createFileRoute('/')({
 })
 
 function HomePage() {
-  const { currentUser, state, leaderboard, updateFavoriteTeam } = useApp()
-  const [selectedTeamId, setSelectedTeamId] = useState(currentUser?.teamId ?? TEAMS[0]?.id ?? 'arg')
+  const { authResolved, currentUser, state, leaderboard, updateFavoriteTeam } = useApp()
+  const defaultTeamId = TEAMS[0]?.id ?? 'mex'
+  const [selectedTeamId, setSelectedTeamId] = useState(currentUser?.teamId ?? defaultTeamId)
   const [savingFavorite, setSavingFavorite] = useState(false)
   const [isChangeFavoriteOpen, setIsChangeFavoriteOpen] = useState(false)
 
   useEffect(() => {
     if (!currentUser) return
-    setSelectedTeamId(currentUser.teamId)
-  }, [currentUser])
+    const currentTeamIsQualified = TEAMS.some((team) => team.id === currentUser.teamId)
+    setSelectedTeamId(currentTeamIsQualified ? currentUser.teamId : defaultTeamId)
+  }, [currentUser, defaultTeamId])
+
+  if (!authResolved) {
+    return <LoadingScreen />
+  }
 
   if (!currentUser) {
     return <Navigate to="/ingreso" />
@@ -140,7 +148,8 @@ function HomePage() {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    setSelectedTeamId(currentUser.teamId)
+                    const currentTeamIsQualified = TEAMS.some((team) => team.id === currentUser.teamId)
+                    setSelectedTeamId(currentTeamIsQualified ? currentUser.teamId : defaultTeamId)
                     setIsChangeFavoriteOpen(true)
                   }}
                 >
@@ -203,18 +212,11 @@ function HomePage() {
               </p>
 
               <div className="mt-4">
-                <select
+                <QualifiedTeamSelect
                   value={selectedTeamId}
-                  onChange={(event) => setSelectedTeamId(event.target.value)}
+                  onChange={setSelectedTeamId}
                   disabled={savingFavorite}
-                  className="h-10 w-full rounded-md border border-[var(--line)] bg-[var(--secondary)] px-3 text-sm text-white"
-                >
-                  {TEAMS.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.flag} {team.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div className="mt-5 flex justify-end gap-2">

@@ -224,6 +224,7 @@ type CreateMatchInput = {
 type ActionResult = { ok: true } | { ok: false; message: string }
 
 type AppContextValue = {
+  authResolved: boolean
   ready: boolean
   state: AppState
   currentUser: User | null
@@ -259,6 +260,7 @@ type AppContextValue = {
 const AppContext = createContext<AppContextValue | null>(null)
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [authResolved, setAuthResolved] = useState(false)
   const [ready, setReady] = useState(false)
   const [state, setState] = useState<AppState>(buildInitialState)
   const [sessionToken, setSessionToken] = useState<string | null>(null)
@@ -405,39 +407,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false
 
     async function bootstrap() {
-      await refreshMatches()
-
       const storedToken = readSessionToken()
       if (!storedToken) {
-        if (!cancelled) setReady(true)
-        return
-      }
+        if (!cancelled) {
+          setAuthResolved(true)
+        }
+      } else {
+        const meResponse = await invokeUsersAction<{ sessionToken: string }, { user: SessionUserDTO }>('me', {
+          sessionToken: storedToken,
+        })
 
-      const meResponse = await invokeUsersAction<{ sessionToken: string }, { user: SessionUserDTO }>('me', {
-        sessionToken: storedToken,
-      })
+        if (cancelled) return
+
+        if (!meResponse.ok) {
+          setSessionToken(null)
+          setCurrentUser(null)
+          setLeaderboard([])
+          setAuthResolved(true)
+        } else {
+          const meUser = mapSessionUser(meResponse.data.user)
+          setSessionToken(storedToken)
+          setCurrentUser(meUser)
+          setAuthResolved(true)
+
+          await Promise.all([
+            refreshUsersWithSession(storedToken, meUser.isAdmin),
+            refreshQuinielaDataWithToken(storedToken),
+            refreshLeaderboardWithToken(storedToken),
+          ])
+        }
+      }
 
       if (cancelled) return
 
-      if (!meResponse.ok) {
-        setSessionToken(null)
-        setCurrentUser(null)
-        setLeaderboard([])
+      await refreshMatches()
+
+      if (!cancelled) {
         setReady(true)
-        return
       }
-
-      const meUser = mapSessionUser(meResponse.data.user)
-      setSessionToken(storedToken)
-      setCurrentUser(meUser)
-
-      await Promise.all([
-        refreshUsersWithSession(storedToken, meUser.isAdmin),
-        refreshQuinielaDataWithToken(storedToken),
-        refreshLeaderboardWithToken(storedToken),
-      ])
-
-      if (!cancelled) setReady(true)
     }
 
     void bootstrap()
@@ -932,6 +939,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state])
 
   const value: AppContextValue = {
+    authResolved,
     ready,
     state,
     currentUser,

@@ -1,10 +1,12 @@
 import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Card } from '#/components/ui/card'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { Button } from '#/components/ui/button'
+import { QualifiedTeamSelect } from '#/components/ui/qualified-team-select'
+import { LoadingScreen } from '#/components/layout/loading-screen'
 import { useApp } from '#/context/app-context'
 import { TEAMS } from '#/lib/teams'
 
@@ -13,7 +15,7 @@ export const Route = createFileRoute('/ingreso')({
 })
 
 function IngresoPage() {
-  const { currentUser, register, login } = useApp()
+  const { authResolved, currentUser, register, login } = useApp()
   const navigate = useNavigate()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [error, setError] = useState<string | null>(null)
@@ -23,12 +25,14 @@ function IngresoPage() {
 
   const [email, setEmail] = useState('')
   const [nickname, setNickname] = useState('')
-  const [teamId, setTeamId] = useState(TEAMS[0]?.id ?? 'arg')
+  const [teamId, setTeamId] = useState(TEAMS[0]?.id ?? 'mex')
   const [secretPhrase, setSecretPhrase] = useState('')
   const [pin, setPin] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const teams = useMemo(() => TEAMS, [])
+  if (!authResolved) {
+    return <LoadingScreen />
+  }
 
   if (currentUser) {
     return <Navigate to={currentUser.onboardingCompleted ? '/' : '/onboarding'} />
@@ -170,18 +174,11 @@ function IngresoPage() {
             </div>
             <div>
               <Label htmlFor="registerTeam">Avatar de seleccion</Label>
-              <select
+              <QualifiedTeamSelect
                 id="registerTeam"
                 value={teamId}
-                onChange={(event) => setTeamId(event.target.value)}
-                className="h-10 w-full rounded-md border border-[var(--line)] bg-[var(--secondary)] px-3 text-sm"
-              >
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.flag} {team.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setTeamId}
+              />
             </div>
             <div>
               <Label htmlFor="registerSecret">Palabra secreta</Label>
