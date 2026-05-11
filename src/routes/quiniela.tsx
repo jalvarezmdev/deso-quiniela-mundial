@@ -607,14 +607,18 @@ function QuinielaPage() {
             </section>
           )}
 
-          <div className="mt-6 mb-28 flex items-center justify-end gap-2">
-            <Button
-              onClick={() => void onConfirmPhase()}
-              disabled={!canConfirmPhase}
-            >
-              Confirmar {phaseLabel(displayedPhase)}
-            </Button>
-          </div>
+          {displayedPhase !== "groups" ? (
+            <div className="mt-6 mb-28 flex items-center justify-end gap-2">
+              <Button
+                onClick={() => void onConfirmPhase()}
+                disabled={!canConfirmPhase}
+              >
+                Confirmar {phaseLabel(displayedPhase)}
+              </Button>
+            </div>
+          ) : (
+            <div className="mb-28" />
+          )}
 
           {selectedMatch ? (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

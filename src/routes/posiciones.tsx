@@ -69,13 +69,13 @@ function PosicionesPage() {
           </Card>
 
           <Card className="overflow-hidden border-[var(--line)] bg-[var(--surface-1)]/95 p-0">
-            <table className="w-full border-collapse text-sm">
+              <table className="w-full table-fixed border-collapse text-xs sm:text-sm">
               <thead className="bg-[var(--surface-2)] text-left text-zinc-300">
                 <tr>
-                  <th className="px-4 py-3">Rank</th>
-                  <th className="px-4 py-3">Jugador</th>
-                  <th className="px-4 py-3">Exactos</th>
-                  <th className="px-4 py-3 text-right">Puntos</th>
+                  <th className="w-12 px-2 py-3 sm:w-16 sm:px-4">Rank</th>
+                  <th className="px-2 py-3 sm:px-4">Jugador</th>
+                  <th className="w-20 px-2 py-3 sm:w-40 sm:px-4">Exactos</th>
+                  <th className="w-16 px-2 py-3 text-right sm:w-20 sm:px-4">Puntos</th>
                 </tr>
               </thead>
               <tbody>
@@ -91,28 +91,28 @@ function PosicionesPage() {
                         isCurrentUser ? 'bg-[var(--accent)]/8' : 'bg-[var(--surface-1)]/50'
                       }`}
                     >
-                      <td className="px-4 py-3 font-bold text-zinc-100">{index + 1}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-2 py-3 font-bold text-zinc-100 sm:px-4">{index + 1}</td>
+                      <td className="px-2 py-3 sm:px-4">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-[var(--primary)]">
+                          <span className="break-words font-semibold text-[var(--primary)]">
                             {team.flag} {row.nickname}
                           </span>
                           {isCurrentUser ? (
-                            <span className="rounded-full bg-[var(--accent)]/15 px-2 py-0.5 text-[11px] font-semibold text-[var(--accent)]">
+                            <span className="hidden rounded-full bg-[var(--accent)]/15 px-2 py-0.5 text-[11px] font-semibold text-[var(--accent)] sm:inline-flex">
                               usuario actual
                             </span>
                           ) : null}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <span className="min-w-6 font-semibold text-zinc-100">{row.exactHits}</span>
-                          <div className="h-1.5 w-24 overflow-hidden rounded-full bg-[var(--surface-2)]">
+                      <td className="px-2 py-3 sm:px-4">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <span className="min-w-5 font-semibold text-zinc-100 sm:min-w-6">{row.exactHits}</span>
+                          <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-[var(--surface-2)] sm:block">
                             <div className="h-full rounded-full bg-cyan-400" style={{ width: `${progress}%` }} />
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right font-black text-[var(--primary)]">{row.points}</td>
+                      <td className="px-2 py-3 text-right font-black text-[var(--primary)] sm:px-4">{row.points}</td>
                     </tr>
                   )
                 })}
@@ -124,7 +124,7 @@ function PosicionesPage() {
                   </tr>
                 ) : null}
               </tbody>
-            </table>
+              </table>
           </Card>
         </div>
       </PageShell>
