@@ -1,4 +1,5 @@
 {
+  "version": "v1.0.1",
   "name": "deso-quiniela-mundial",
   "private": true,
   "type": "module",
