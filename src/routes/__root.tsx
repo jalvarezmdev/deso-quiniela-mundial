@@ -77,11 +77,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   )
 }
 
-function RootLayout({ children }: { children: React.ReactNode }) {
-  const { authResolved, currentUser } = useApp()
+export function RootLayout({ children }: { children: React.ReactNode }) {
+  const { ready, currentUser } = useApp()
 
-  if (!authResolved) {
-    return <LoadingScreen />
+  if (!ready) {
+    return (
+      <div className="fixed inset-0 overflow-hidden bg-[var(--surface-0)]">
+        <LoadingScreen />
+      </div>
+    )
   }
 
   return (
