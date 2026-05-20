@@ -44,6 +44,11 @@ import {
   type Prediction,
   type User,
 } from '#/lib/types'
+import {
+  hasLocalPrediction,
+  savePredictionWithFallback,
+  type SavePredictionInput,
+} from './save-prediction-strategy'
 
 const SESSION_TOKEN_KEY = 'quiniela_session_token_v1'
 const HYDRATION_SAFE_NOW_ISO = '2026-01-01T00:00:00.000Z'
@@ -189,14 +194,6 @@ type RegisterInput = {
 type LoginInput = {
   email: string
   pin: string
-}
-
-type SavePredictionInput = {
-  phase: PhaseKey
-  matchId: string
-  homeGoals: number
-  awayGoals: number
-  predictedQualifiedTeamId: string | null
 }
 
 type SetResultInput = {
@@ -643,19 +640,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { ok: false as const, message: 'No puedes editar esa fase ahora.' }
     }
 
-    const createResponse = await invokeAuthenticatedQuinielasAction<
-      SavePredictionInput,
-      { prediction: PredictionDTO }
-    >('create_prediction', sessionToken, payload)
-
-    const response =
-      createResponse.ok || createResponse.error.code !== 'CONFLICT'
-        ? createResponse
-        : await invokeAuthenticatedQuinielasAction<SavePredictionInput, { prediction: PredictionDTO }>(
-            'update_prediction',
-            sessionToken,
-            payload,
-          )
+    const hasPrediction = hasLocalPrediction(state.predictions, {
+      userId: currentUser.id,
+      phase: payload.phase,
+      matchId: payload.matchId,
+    })
+    const response = await savePredictionWithFallback(
+      (action, input) =>
+        invokeAuthenticatedQuinielasAction<SavePredictionInput, { prediction: PredictionDTO }>(
+          action,
+          sessionToken,
+          input,
+        ),
+      payload,
+      hasPrediction,
+    )
 
     if (!response.ok) {
       return { ok: false, message: response.error.message }
@@ -684,7 +683,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })
 
     return { ok: true }
-  }, [canEditPhase, currentUser, sessionToken])
+  }, [canEditPhase, currentUser, sessionToken, state.predictions])
 
   const confirmPhase = useCallback(async (phase: PhaseKey): Promise<ActionResult> => {
     if (!currentUser) {

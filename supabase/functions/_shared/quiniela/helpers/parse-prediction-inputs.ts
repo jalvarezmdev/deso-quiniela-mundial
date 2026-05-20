@@ -21,11 +21,16 @@ export function validatePredictedQualifiedTeam(input: {
   awayTeamId: string;
   predictedQualifiedTeamId: string | null;
 }): void {
-  if (!input.predictedQualifiedTeamId) return;
-
   if (input.phase === "groups") {
+    if (!input.predictedQualifiedTeamId) return;
     throw new ValidationError(
       "La fase de grupos no admite equipo clasificado en el pronostico.",
+    );
+  }
+
+  if (!input.predictedQualifiedTeamId) {
+    throw new ValidationError(
+      "Debes indicar el clasificado pronosticado.",
     );
   }
 

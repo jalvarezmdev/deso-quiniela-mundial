@@ -17,6 +17,20 @@ Deno.test("validatePredictedQualifiedTeam rejects group predictions with predict
   }
 });
 
+Deno.test("validatePredictedQualifiedTeam rejects knockout predictions without predicted qualified team", () => {
+  try {
+    validatePredictedQualifiedTeam({
+      phase: "roundOf16",
+      homeTeamId: "arg",
+      awayTeamId: "bra",
+      predictedQualifiedTeamId: null,
+    });
+    throw new Error("Expected ValidationError");
+  } catch (error) {
+    if (!(error instanceof ValidationError)) throw error;
+  }
+});
+
 Deno.test("validatePredictedQualifiedTeam rejects team outside match teams", () => {
   try {
     validatePredictedQualifiedTeam({

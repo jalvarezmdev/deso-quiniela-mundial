@@ -10,6 +10,10 @@ import {
   type PhaseSubmissionsRow,
   toPhaseSubmissionDTO,
 } from "../helpers/quinielas-helpers.ts";
+import {
+  getMissingFixtureCount,
+  getMissingPredictionMatchIds,
+} from "../helpers/phase-submission-completion.ts";
 
 export async function handleCreatePhaseSubmission(
   ctx: AuthenticatedActionContext,
@@ -33,17 +37,57 @@ export async function handleCreatePhaseSubmission(
       return jsonError("CONFLICT", "La fase ya fue confirmada.", 409);
     }
 
-    const { count, error: countError } = await ctx.supabase
+    const { data: matches, error: matchesError } = await ctx.supabase
+      .from("matches")
+      .select("id, kickoff_at")
+      .eq("phase", phase)
+      .is("deleted_at", null);
+
+    if (matchesError) return handleDbError(matchesError);
+
+    const matchRows = (matches as { id: string; kickoff_at: string }[] | null) ??
+      [];
+    const matchIds = matchRows.map((match) => match.id);
+    const matchKickoffAts = matchRows.map((match) => match.kickoff_at);
+
+    if (matchIds.length === 0) {
+      return jsonError(
+        "VALIDATION_ERROR",
+        "No hay partidos disponibles para confirmar esta fase.",
+        400,
+      );
+    }
+
+    const missingFixtureCount = getMissingFixtureCount(phase, matchKickoffAts);
+    if (missingFixtureCount > 0) {
+      return jsonError(
+        "VALIDATION_ERROR",
+        `Debes esperar a que todos los cruces de la fase esten definidos antes de confirmar. Faltan ${missingFixtureCount}.`,
+        400,
+      );
+    }
+
+    const { data: predictions, error: predictionsError } = await ctx.supabase
       .from("predictions")
-      .select("match_id", { count: "exact", head: true })
+      .select("match_id")
       .eq("user_id", ctx.me.id)
       .eq("phase", phase);
 
-    if (countError) return handleDbError(countError);
-    if (!count || count < 1) {
+    if (predictionsError) return handleDbError(predictionsError);
+
+    const predictionMatchIds =
+      (predictions as { match_id: string }[] | null)?.map((prediction) =>
+        prediction.match_id
+      ) ?? [];
+    const missingPredictionMatchIds = getMissingPredictionMatchIds({
+      matchIds,
+      predictionMatchIds,
+    });
+
+    if (missingPredictionMatchIds.length > 0) {
       return jsonError(
         "VALIDATION_ERROR",
-        "Debes tener al menos una prediccion para confirmar la fase.",
+        `Debes completar todos los pronosticos de la fase antes de confirmar. Faltan ${missingPredictionMatchIds.length}.`,
         400,
       );
     }
