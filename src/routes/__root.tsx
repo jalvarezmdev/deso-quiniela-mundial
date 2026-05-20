@@ -1,6 +1,8 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useState } from 'react'
 import { AppProvider } from '#/context/app-context'
 import { useApp } from '#/context/app-context'
 import { Footer } from '#/components/layout/footer'
@@ -32,36 +34,40 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient())
+
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body suppressHydrationWarning className="min-h-screen">
-        <AppProvider>
-          <RootLayout>{children}</RootLayout>
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 3500,
-              style: {
-                background: '#0f1d2d',
-                color: '#e5e7eb',
-                border: '1px solid #243447',
-              },
-              success: {
+        <QueryClientProvider client={queryClient}>
+          <AppProvider>
+            <RootLayout>{children}</RootLayout>
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 3500,
                 style: {
-                  border: '1px solid #84cc16',
+                  background: '#0f1d2d',
+                  color: '#e5e7eb',
+                  border: '1px solid #243447',
                 },
-              },
-              error: {
-                style: {
-                  border: '1px solid #ef4444',
+                success: {
+                  style: {
+                    border: '1px solid #84cc16',
+                  },
                 },
-              },
-            }}
-          />
-        </AppProvider>
+                error: {
+                  style: {
+                    border: '1px solid #ef4444',
+                  },
+                },
+              }}
+            />
+          </AppProvider>
+        </QueryClientProvider>
         <TanStackDevtools
           config={{ position: 'bottom-right' }}
           plugins={[

@@ -3,7 +3,8 @@ import { Button } from "#/components/ui/button";
 type QuinielaProgressProps = {
   savedMatchesCount: number;
   totalMatchesCount: number;
-  missingCount: number;
+  missingFixtureCount: number;
+  missingPredictionCount: number;
   savedProgress: number;
   editable: boolean;
   canConfirmPhase: boolean;
@@ -13,7 +14,8 @@ type QuinielaProgressProps = {
 export function QuinielaProgress({
   savedMatchesCount,
   totalMatchesCount,
-  missingCount,
+  missingFixtureCount,
+  missingPredictionCount,
   savedProgress,
   editable,
   canConfirmPhase,
@@ -28,9 +30,14 @@ export function QuinielaProgress({
             {savedMatchesCount} / {totalMatchesCount} cargados
           </span>
         </div>
-        {missingCount > 0 ? (
+        {missingFixtureCount > 0 ? (
           <p className="mb-1 text-[11px] text-zinc-400">
-            {missingCount} cruces por definir para habilitar confirmacion.
+            {missingFixtureCount} cruces por definir para habilitar confirmacion.
+          </p>
+        ) : null}
+        {missingPredictionCount > 0 ? (
+          <p className="mb-1 text-[11px] text-zinc-400">
+            Faltan {missingPredictionCount} pronosticos para habilitar confirmacion.
           </p>
         ) : null}
         <div className="h-2 overflow-hidden rounded-full bg-zinc-800">

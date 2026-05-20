@@ -1,15 +1,42 @@
-import type { Match } from '#/lib/types'
+import type { Match, PhaseKey } from '#/lib/types'
 
 export type GroupRound = 1 | 2 | 3
 export type GroupBucket = {
   groupName: string
   matches: Match[]
 }
+export type GroupRoundProps = {
+  matches: Match[];
+  activePhase: PhaseKey;
+  filter: GroupRound | 'all';
+}
+
+export const GROUP_ROUNDS: GroupRound[] = [1, 2, 3];
 
 function byKickoffThenIdAsc(a: Match, b: Match): number {
   const kickoffDiff = new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime()
   if (kickoffDiff !== 0) return kickoffDiff
   return a.id.localeCompare(b.id)
+}
+
+export function filteredGroupRounds(filter: GroupRound | 'all') {
+  return filter === 'all' ? GROUP_ROUNDS : [filter]
+}
+
+export function getGroupRounds({
+  matches, 
+  activePhase, 
+  filter
+}: GroupRoundProps) {
+  if (activePhase !== "groups") return [];
+  return filteredGroupRounds(filter).flatMap((round) => {
+    const roundMatches = matches.filter(
+      (match) => getGroupMatchRoundMap(matches).get(match.id) === round,
+    );
+    return roundMatches.length === 0
+      ? []
+      : [{ round, groups: groupMatchesByGroupName(roundMatches) }];
+  })
 }
 
 export function getGroupMatchRoundMap(matches: Match[]): Map<string, GroupRound> {

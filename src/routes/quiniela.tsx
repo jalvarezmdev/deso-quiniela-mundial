@@ -1,37 +1,46 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
 import { RequireAuth } from "#/components/layout/require-auth";
 import { PageShell } from "#/components/layout/page-shell";
 import { QuinielaProgress } from "#/components/layout/quiniela-progress";
 import { QuinielaTestPreviewControls } from "#/components/layout/quiniela-test-preview-controls";
+import {
+  MatchScoreEntry,
+  type MatchScoreEntrySubmitInput,
+} from "#/components/quiniela/match-score-entry";
+import { MatchDialogMotion } from "#/components/quiniela/match-dialog-motion";
+import { QuinielaMatchFlow } from "#/components/quiniela/quiniela-match-flow";
+import {
+  QuinielaMatchFlowProvider,
+  useQuinielaMatchFlowController,
+} from "#/components/quiniela/quiniela-match-flow-context";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Card } from "#/components/ui/card";
-import { Input } from "#/components/ui/input";
-import { Label } from "#/components/ui/label";
 import { useApp } from "#/context/app-context";
 import {
   CalendarClockIcon,
   CheckCircle2Icon,
   Clock3Icon,
-  Loader2Icon,
+  FlaskConicalIcon,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
   getGroupMatchRoundMap,
+  getGroupRounds,
+  GROUP_ROUNDS,
   groupMatchesByGroupName,
   type GroupRound,
 } from "#/lib/group-rounds";
 import { getTeam } from "#/lib/teams";
 import { toVenDateTimeLabel } from "#/lib/time";
-import { PHASES, type Match, type PhaseKey } from "#/lib/types";
+import { PHASES, type Match, type PhaseKey, type Prediction } from "#/lib/types";
 import { resolveDisplayedPhase } from "#/lib/quiniela-phase-preview";
+import { getPhaseConfirmationState } from "#/lib/phase-confirmation";
 import {
   buildKnockoutMatchViews,
   type QuinielaMatchView,
 } from "#/lib/elimination-preview";
-import { useScreenSize } from "#/hooks/use-screen-size";
 
 export const Route = createFileRoute("/quiniela")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -118,7 +127,6 @@ function groupAccentClass(groupName: string): GroupAccentStyles {
   return GROUP_ACCENT_BY_LETTER[letter] ?? DEFAULT_GROUP_ACCENT;
 }
 
-const GROUP_ROUNDS: GroupRound[] = [1, 2, 3];
 type RoundFilter = "all" | GroupRound;
 type KnockoutPhase = Exclude<PhaseKey, "groups">;
 const KNOCKOUT_PHASES: KnockoutPhase[] = [
@@ -148,7 +156,6 @@ function QuinielaPage() {
   } = useApp();
   const { phasePreview } = Route.useSearch();
   const navigate = Route.useNavigate();
-  const { isMobile, isTablet, isDesktop } = useScreenSize();
 
   const displayedPhase = useMemo(
     () =>
@@ -161,9 +168,6 @@ function QuinielaPage() {
   );
 
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [homeGoals, setHomeGoals] = useState("0");
-  const [awayGoals, setAwayGoals] = useState("0");
-  const [qualifiedTeamId, setQualifiedTeamId] = useState<string>("");
   const [isSavingMatch, setIsSavingMatch] = useState(false);
   const [roundFilter, setRoundFilter] = useState<RoundFilter>("all");
   const [showPreviewControls, setShowPreviewControls] = useState(false);
@@ -199,14 +203,20 @@ function QuinielaPage() {
     [displayedPhase, matches, previewByPhase],
   );
 
-  const groupRoundMap = useMemo(
-    () => getGroupMatchRoundMap(matches),
-    [matches],
-  );
+  const visibleRoundGroups = useMemo(() => {
+    return getGroupRounds({
+      matches,
+      activePhase: displayedPhase,
+      filter: roundFilter,
+    })
+  }, [displayedPhase, roundFilter, matches]);
 
-  const visibleRounds = useMemo(
-    () => (roundFilter === "all" ? GROUP_ROUNDS : [roundFilter]),
-    [roundFilter],
+  const visibleFlowMatches = useMemo(
+    () =>
+      visibleRoundGroups.flatMap((roundGroup) =>
+        roundGroup.groups.flatMap((group) => group.matches),
+      ),
+    [visibleRoundGroups],
   );
 
   const currentUserPhasePredictions = useMemo(
@@ -218,17 +228,42 @@ function QuinielaPage() {
       ),
     [displayedPhase, currentUser?.id, state.predictions],
   );
+  const predictionByMatchId = useMemo(
+    () =>
+      new Map(
+        currentUserPhasePredictions.map((prediction) => [
+          prediction.matchId,
+          prediction,
+        ]),
+      ),
+    [currentUserPhasePredictions],
+  );
 
-  const savedMatchesCount = currentUserPhasePredictions.length;
-  const totalMatchesCount = matches.length;
+  const editable = canEditPhase(displayedPhase);
+  const { savedMatchesCount, totalMatchesCount, missingPredictionCount, canConfirmPhase } =
+    getPhaseConfirmationState({
+      editable,
+      phaseMatches: matches,
+      phasePredictions: currentUserPhasePredictions,
+      missingFixtureCount: knockoutViews.missingCount,
+    });
   const savedProgress =
     totalMatchesCount === 0
       ? 0
       : Math.round((savedMatchesCount / totalMatchesCount) * 100);
-  const editable = canEditPhase(displayedPhase);
-  const canConfirmPhase = editable && knockoutViews.missingCount === 0;
   const phaseEditableAtNow = isPhaseEditableAtNow(displayedPhase);
   const phaseWindow = getPhaseWindowAtNow(displayedPhase);
+  const quinielaMatchFlow = useQuinielaMatchFlowController({
+    userId: currentUser?.id ?? "anonymous",
+    phase: displayedPhase,
+    roundFilter,
+    matches: visibleFlowMatches,
+    predictions: currentUserPhasePredictions,
+    savePrediction,
+    onComplete: () => toast.success("Quiniela cargada."),
+    onSaveError: (message) => toast.error(message),
+  });
+  const canOpenFlow = editable && quinielaMatchFlow.canOpen;
 
   useEffect(() => {
     setRoundFilter("all");
@@ -239,35 +274,35 @@ function QuinielaPage() {
   }
 
   function openModal(match: Match) {
-    const existing = state.predictions.find(
-      (prediction) =>
-        prediction.userId === currentUser?.id &&
-        prediction.phase === displayedPhase &&
-        prediction.matchId === match.id,
-    );
-
     setSelectedMatch(match);
-    setHomeGoals(String(existing?.homeGoals ?? 0));
-    setAwayGoals(String(existing?.awayGoals ?? 0));
-    setQualifiedTeamId(existing?.predictedQualifiedTeamId ?? "");
   }
 
-  async function onSaveMatch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function predictionForMatch(match: Match): Prediction | null {
+    return predictionByMatchId.get(match.id) ?? null;
+  }
+
+  async function saveMatchPrediction(
+    match: Match,
+    input: MatchScoreEntrySubmitInput,
+  ) {
+    return savePrediction({
+      phase: match.phase,
+      matchId: match.id,
+      homeGoals: input.homeGoals,
+      awayGoals: input.awayGoals,
+      predictedQualifiedTeamId: isKnockout(match.phase)
+        ? input.predictedQualifiedTeamId
+        : null,
+    });
+  }
+
+  async function onSaveModalMatch(input: MatchScoreEntrySubmitInput) {
     if (!selectedMatch || isSavingMatch) return;
 
     setIsSavingMatch(true);
 
     try {
-      const result = await savePrediction({
-        phase: selectedMatch.phase,
-        matchId: selectedMatch.id,
-        homeGoals: Number(homeGoals),
-        awayGoals: Number(awayGoals),
-        predictedQualifiedTeamId: isKnockout(selectedMatch.phase)
-          ? qualifiedTeamId || null
-          : null,
-      });
+      const result = await saveMatchPrediction(selectedMatch, input);
 
       if (!result.ok) {
         toast.error(result.message);
@@ -296,12 +331,7 @@ function QuinielaPage() {
   function renderGroupedMatchRow(match: Match) {
     const home = getTeam(match.homeTeamId);
     const away = getTeam(match.awayTeamId);
-    const prediction = state.predictions.find(
-      (item) =>
-        item.userId === currentUser?.id &&
-        item.phase === displayedPhase &&
-        item.matchId === match.id,
-    );
+    const prediction = predictionForMatch(match);
 
     return (
       <div className="flex flex-col gap-2">
@@ -348,12 +378,7 @@ function QuinielaPage() {
   function renderMatchCardStandalone(match: Match) {
     const home = getTeam(match.homeTeamId);
     const away = getTeam(match.awayTeamId);
-    const prediction = state.predictions.find(
-      (item) =>
-        item.userId === currentUser?.id &&
-        item.phase === displayedPhase &&
-        item.matchId === match.id,
-    );
+    const prediction = predictionForMatch(match);
 
     return (
       <Card
@@ -476,7 +501,7 @@ function QuinielaPage() {
             }
           />
         ) : null}
-        <div className="">
+        <div className="mb-28">
           <Card className="mb-4 border-[var(--accent)]/50 bg-[var(--surface-1)] shadow-[0_0_0_1px_rgba(204,255,0,0.16),0_0_26px_rgba(204,255,0,0.14)]">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -555,17 +580,19 @@ function QuinielaPage() {
                 ))}
               </section>
 
+              <div className="mb-4 flex justify-start">
+                <Button
+                  type="button"
+                  onClick={quinielaMatchFlow.open}
+                  disabled={!canOpenFlow}
+                  className="h-12 px-6 text-base"
+                >
+                  Cargar Quiniela
+                </Button>
+              </div>
+
               <section className="grid gap-4">
-                {visibleRounds.map((round) => {
-                  const roundMatches = matches.filter(
-                    (match) => groupRoundMap.get(match.id) === round,
-                  );
-                  if (roundMatches.length === 0) {
-                    return null;
-                  }
-
-                  const groupedMatches = groupMatchesByGroupName(roundMatches);
-
+                {visibleRoundGroups.map(({ round, groups }) => {
                   return (
                     <div
                       key={round}
@@ -575,7 +602,7 @@ function QuinielaPage() {
                         Jornada {round}
                       </h3>
                       <div className="grid gap-4 md:grid-cols-2">
-                        {groupedMatches.map((group) => {
+                        {groups.map((group) => {
                           const accent = groupAccentClass(group.groupName);
                           return (
                             <Card
@@ -607,126 +634,35 @@ function QuinielaPage() {
             </section>
           )}
 
-          {displayedPhase !== "groups" ? (
-            <div className="mt-6 mb-28 flex items-center justify-end gap-2">
-              <Button
-                onClick={() => void onConfirmPhase()}
-                disabled={!canConfirmPhase}
-              >
-                Confirmar {phaseLabel(displayedPhase)}
-              </Button>
-            </div>
-          ) : (
-            <div className="mb-28" />
-          )}
-
           {selectedMatch ? (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-              <Card className="w-full max-w-md p-6">
-                <h2 className="text-xl font-black text-[--primary]">
-                  Cargar cruce
-                </h2>
-
-                <form className="mt-4 space-y-3" onSubmit={onSaveMatch}>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label
-                        htmlFor="homeGoals"
-                        className="mb-2 block max-w-full truncate text-center text-2xl font-extrabold leading-tight md:text-3xl"
-                        title={getTeam(selectedMatch.homeTeamId).name}
-                      >
-                        {getTeam(selectedMatch.homeTeamId).flag}{" "}
-                        {teamCode(selectedMatch.homeTeamId)}
-                      </Label>
-                      <Input
-                        id="homeGoals"
-                        type="number"
-                        min={0}
-                        value={homeGoals}
-                        onChange={(event) => setHomeGoals(event.target.value)}
-                        className="h-16 text-center text-4xl font-black tabular-nums tracking-tight"
-                        disabled={isSavingMatch}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="awayGoals"
-                        className="mb-2 block max-w-full truncate text-center text-2xl font-extrabold leading-tight md:text-3xl"
-                        title={getTeam(selectedMatch.awayTeamId).name}
-                      >
-                        {getTeam(selectedMatch.awayTeamId).flag}{" "}
-                        {teamCode(selectedMatch.awayTeamId)}
-                      </Label>
-                      <Input
-                        id="awayGoals"
-                        type="number"
-                        min={0}
-                        value={awayGoals}
-                        onChange={(event) => setAwayGoals(event.target.value)}
-                        className="h-16 text-center text-4xl font-black tabular-nums tracking-tight"
-                        disabled={isSavingMatch}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {isKnockout(selectedMatch.phase) ? (
-                    <div>
-                      <Label htmlFor="qualified">Clasificado final</Label>
-                      <select
-                        id="qualified"
-                        value={qualifiedTeamId}
-                        onChange={(event) =>
-                          setQualifiedTeamId(event.target.value)
-                        }
-                        className="h-10 w-full rounded-md border border-[--line] bg-[var(--secondary)] px-3 text-sm"
-                        disabled={isSavingMatch}
-                        required
-                      >
-                        <option value="">Selecciona clasificado</option>
-                        <option value={selectedMatch.homeTeamId}>
-                          {getTeam(selectedMatch.homeTeamId).flag}{" "}
-                          {getTeam(selectedMatch.homeTeamId).name}
-                        </option>
-                        <option value={selectedMatch.awayTeamId}>
-                          {getTeam(selectedMatch.awayTeamId).flag}{" "}
-                          {getTeam(selectedMatch.awayTeamId).name}
-                        </option>
-                      </select>
-                    </div>
-                  ) : null}
-
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setSelectedMatch(null)}
-                      disabled={isSavingMatch}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button type="submit" disabled={isSavingMatch}>
-                      {isSavingMatch ? (
-                        <>
-                          <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                          Guardando...
-                        </>
-                      ) : (
-                        "Guardar"
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </Card>
+              <MatchDialogMotion key={selectedMatch.id}>
+                <Card className="w-full max-w-md p-6">
+                  <h2 className="text-xl font-black text-[--primary]">
+                    Cargar cruce
+                  </h2>
+                  <MatchScoreEntry
+                    match={selectedMatch}
+                    prediction={predictionForMatch(selectedMatch)}
+                    isSaving={isSavingMatch}
+                    onCancel={() => setSelectedMatch(null)}
+                    onSubmit={(input) => void onSaveModalMatch(input)}
+                  />
+                </Card>
+              </MatchDialogMotion>
             </div>
           ) : null}
+
+          <QuinielaMatchFlowProvider value={quinielaMatchFlow}>
+            <QuinielaMatchFlow />
+          </QuinielaMatchFlowProvider>
 
           <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--surface-0)]/95 px-4 py-3 backdrop-blur mb-16 md:mb-0">
             <QuinielaProgress
               savedMatchesCount={savedMatchesCount}
               totalMatchesCount={totalMatchesCount}
-              missingCount={knockoutViews.missingCount}
+              missingFixtureCount={knockoutViews.missingCount}
+              missingPredictionCount={missingPredictionCount}
               savedProgress={savedProgress}
               editable={editable}
               canConfirmPhase={canConfirmPhase}
