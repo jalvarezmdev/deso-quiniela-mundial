@@ -142,6 +142,7 @@ function IngresoPage() {
                 type="password"
                 inputMode="numeric"
                 pattern="[0-9]{6}"
+                maxLength={6}
                 value={loginPin}
                 onChange={(event) => setLoginPin(event.target.value)}
                 required
@@ -196,6 +197,7 @@ function IngresoPage() {
                 type="password"
                 inputMode="numeric"
                 pattern="[0-9]{6}"
+                maxLength={6}
                 value={pin}
                 onChange={(event) => setPin(event.target.value)}
                 required

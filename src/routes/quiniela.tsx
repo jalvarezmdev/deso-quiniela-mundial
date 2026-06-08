@@ -23,6 +23,7 @@ import {
   CheckCircle2Icon,
   Clock3Icon,
   FlaskConicalIcon,
+  ZapIcon,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
@@ -580,16 +581,15 @@ function QuinielaPage() {
                 ))}
               </section>
 
-              <div className="mb-4 flex justify-start">
-                <Button
-                  type="button"
-                  onClick={quinielaMatchFlow.open}
-                  disabled={!canOpenFlow}
-                  className="h-12 px-6 text-base"
-                >
-                  Cargar Quiniela
-                </Button>
-              </div>
+              <Button
+                type="button"
+                onClick={quinielaMatchFlow.open}
+                disabled={!canOpenFlow}
+                className="cursor-pointer h-14 px-6 text-base flex gap-2 w-full"
+              >
+                <ZapIcon size={16} />
+                Empezar a Cargar Quiniela
+              </Button>
 
               <section className="grid gap-4">
                 {visibleRoundGroups.map(({ round, groups }) => {
