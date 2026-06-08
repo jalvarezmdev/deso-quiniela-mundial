@@ -360,9 +360,11 @@ function QuinielaPage() {
                   Pendiente
                 </Badge>
               )}
-              <Button onClick={() => openModal(match)} disabled={!editable}>
-                {prediction ? "Actualizar" : "Cargar"}
-              </Button>
+              {prediction && isPhaseConfirmed(displayedPhase) ? null : (
+                <Button onClick={() => openModal(match)} disabled={!editable}>
+                  {prediction ? "Actualizar" : "Cargar"}
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -413,9 +415,11 @@ function QuinielaPage() {
             </Badge>
           )}
 
-          <Button onClick={() => openModal(match)} disabled={!editable}>
-            {prediction ? "Actualizar" : "Cargar"}
-          </Button>
+          {prediction && isPhaseConfirmed(displayedPhase) ? null : (
+            <Button onClick={() => openModal(match)} disabled={!editable}>
+              {prediction ? "Actualizar" : "Cargar"}
+            </Button>
+          )}
         </div>
       </Card>
     );

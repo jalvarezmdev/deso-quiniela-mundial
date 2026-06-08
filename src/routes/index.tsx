@@ -10,6 +10,7 @@ import { useApp } from '#/context/app-context'
 import { toVenDateTimeLabel } from '#/lib/time'
 import { TEAMS, getTeam } from '#/lib/teams'
 import type { Match, MatchStatus } from '#/lib/types'
+import { ZapIcon } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: HomePage,
@@ -95,13 +96,14 @@ function HomePage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 to="/quiniela"
-                className="inline-flex h-11 items-center justify-center rounded-md bg-[var(--accent)] px-5 text-sm font-semibold text-black no-underline transition hover:brightness-110"
+                className="inline-flex w-full h-11 items-center justify-center rounded-md bg-[var(--accent)] px-5 text-sm font-semibold text-black no-underline transition hover:brightness-110 gap-2"
               >
+                <ZapIcon size={16} />
                 Ir a mi quiniela
               </Link>
               <Link
                 to="/posiciones"
-                className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--line)] bg-[rgba(9,18,29,0.7)] px-5 text-sm font-semibold text-white no-underline transition hover:bg-[rgba(14,26,40,0.9)]"
+                className="inline-flex w-full h-11 items-center justify-center rounded-md border border-[var(--line)] bg-[rgba(9,18,29,0.7)] px-5 text-sm font-semibold text-white no-underline transition hover:bg-[rgba(14,26,40,0.9)]"
               >
                 Ver posiciones
               </Link>
