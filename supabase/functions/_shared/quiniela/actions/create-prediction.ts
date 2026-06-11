@@ -1,4 +1,6 @@
 import type { AuthenticatedActionContext } from "../helpers/action-types.ts";
+import { isMatchLocked } from "../helpers/match-lock.ts";
+import { computeAndStoreMatchPoints } from "../helpers/scoring.ts";
 import {
   assertPhaseEditable,
   handleDbError,
@@ -61,6 +63,14 @@ export async function handleCreatePrediction(
       );
     }
 
+    if (isMatchLocked(match, new Date())) {
+      return jsonError(
+        "CONFLICT",
+        "No se puede modificar el pronostico: el partido esta en curso o finalizado.",
+        409,
+      );
+    }
+
     validatePredictedQualifiedTeam({
       phase: input.phase,
       homeTeamId: match.home_team_id,
@@ -83,6 +93,18 @@ export async function handleCreatePrediction(
 
     if (error || !data) {
       return handleDbError(error);
+    }
+
+    if (match.status === "final" || match.status === "live") {
+      if (match.home_goals !== null && match.away_goals !== null) {
+        await computeAndStoreMatchPoints(ctx.supabase, {
+          matchId: match.id,
+          phase: match.phase,
+          homeGoals: match.home_goals,
+          awayGoals: match.away_goals,
+          qualifiedTeamId: match.qualified_team_id,
+        });
+      }
     }
 
     return jsonOk({ prediction: toPredictionDTO(data) }, 201);
