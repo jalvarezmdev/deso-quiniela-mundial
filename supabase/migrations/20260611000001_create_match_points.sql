@@ -9,14 +9,9 @@ CREATE TABLE match_points (
 );
 
 CREATE INDEX idx_match_points_phase ON match_points(phase);
-CREATE INDEX idx_match_points_user ON match_points(user_id);
 
 -- RLS: users can read their own, service role manages writes
 ALTER TABLE match_points ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can read own match_points"
-  ON match_points FOR SELECT
-  USING (auth.uid() = user_id);
 
 CREATE POLICY "Public can read match_points for leaderboard"
   ON match_points FOR SELECT

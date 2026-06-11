@@ -369,10 +369,6 @@ CREATE INDEX "idx_match_points_phase" ON "public"."match_points" USING "btree" (
 
 
 
-CREATE INDEX "idx_match_points_user" ON "public"."match_points" USING "btree" ("user_id");
-
-
-
 ALTER TABLE ONLY "public"."match_points"
     ADD CONSTRAINT "match_points_match_id_fkey" FOREIGN KEY ("match_id") REFERENCES "public"."matches"("id");
 
@@ -395,7 +391,10 @@ CREATE POLICY "Public can read match_points for leaderboard" ON "public"."match_
 CREATE POLICY "Public can read site_config" ON "public"."site_config" FOR SELECT USING (true);
 
 
-CREATE POLICY "Users can read own match_points" ON "public"."match_points" FOR SELECT USING (("auth"."uid"() = "user_id"));
+CREATE POLICY "Admins can update site_config" ON "public"."site_config" FOR UPDATE USING ((EXISTS (SELECT 1 FROM "public"."profiles" WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."is_admin" = true)))));
+
+CREATE POLICY "Admins can insert site_config" ON "public"."site_config" FOR INSERT WITH CHECK ((EXISTS (SELECT 1 FROM "public"."profiles" WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."is_admin" = true)))));
+CREATE TRIGGER "trg_site_config_set_updated_at" BEFORE UPDATE ON "public"."site_config" FOR EACH ROW EXECUTE FUNCTION "public"."set_updated_at"();
 
 
 

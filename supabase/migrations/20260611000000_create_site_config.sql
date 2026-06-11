@@ -34,3 +34,8 @@ CREATE POLICY "Admins can insert site_config"
       AND profiles.is_admin = true
     )
   );
+
+CREATE TRIGGER trg_site_config_set_updated_at
+  BEFORE UPDATE ON site_config
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_updated_at();
