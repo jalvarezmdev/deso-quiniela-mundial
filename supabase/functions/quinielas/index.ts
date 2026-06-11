@@ -37,6 +37,8 @@ import { handleListMyPredictions } from "../_shared/quiniela/actions/list-my-pre
 import { handleListPhaseSubmissionsAdmin } from "../_shared/quiniela/actions/list-phase-submissions-admin.ts";
 import { handleListPhaseWindowOverrides } from "../_shared/quiniela/actions/list-phase-window-overrides.ts";
 import { handleListPredictionsAdmin } from "../_shared/quiniela/actions/list-predictions-admin.ts";
+import { handleGetScoringConfig } from "../_shared/quiniela/actions/get-scoring-config.ts";
+import { handleUpdateScoringConfig } from "../_shared/quiniela/actions/update-scoring-config.ts";
 import { handleUpdateMatch } from "../_shared/quiniela/actions/update-match.ts";
 import { handleUpdatePhaseSubmission } from "../_shared/quiniela/actions/update-phase-submission.ts";
 import { handleUpdatePhaseWindowOverride } from "../_shared/quiniela/actions/update-phase-window-override.ts";
@@ -46,7 +48,8 @@ type PublicAction =
   | "get_match"
   | "list_matches"
   | "get_phase_window_override"
-  | "list_phase_window_overrides";
+  | "list_phase_window_overrides"
+  | "get_scoring_config";
 
 type AuthenticatedAction =
   | "create_prediction"
@@ -69,7 +72,8 @@ type AdminAction =
   | "delete_phase_window_override"
   | "list_predictions_admin"
   | "update_phase_submission"
-  | "list_phase_submissions_admin";
+  | "list_phase_submissions_admin"
+  | "update_scoring_config";
 
 const publicActionHandlers: Record<
   PublicAction,
@@ -79,6 +83,7 @@ const publicActionHandlers: Record<
   list_matches: handleListMatches,
   get_phase_window_override: handleGetPhaseWindowOverride,
   list_phase_window_overrides: handleListPhaseWindowOverrides,
+  get_scoring_config: handleGetScoringConfig,
 };
 
 const authenticatedActionHandlers: Record<
@@ -110,6 +115,7 @@ const adminActionHandlers: Record<
   list_predictions_admin: handleListPredictionsAdmin,
   update_phase_submission: handleUpdatePhaseSubmission,
   list_phase_submissions_admin: handleListPhaseSubmissionsAdmin,
+  update_scoring_config: handleUpdateScoringConfig,
 };
 
 function getActionHandler<TAction extends string, THandler>(
