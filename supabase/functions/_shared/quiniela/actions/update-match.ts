@@ -11,6 +11,7 @@ import {
   parseUpdateMatchPatch,
   validateMatchOutcomeConsistency,
 } from "../helpers/parse-inputs.ts";
+import { computeAndStoreMatchPoints } from "../helpers/scoring.ts";
 
 function toDbPatch(patch: Record<string, unknown>): Record<string, unknown> {
   const dbPatch: Record<string, unknown> = {};
@@ -82,6 +83,16 @@ export async function handleUpdateMatch(
 
     if (!data) {
       return jsonError("NOT_FOUND", "Partido no encontrado.", 404);
+    }
+
+    if (data.status === "final" || data.status === "live") {
+      await computeAndStoreMatchPoints(ctx.supabase, {
+        matchId: data.id,
+        phase: data.phase,
+        homeGoals: data.home_goals,
+        awayGoals: data.away_goals,
+        qualifiedTeamId: data.qualified_team_id,
+      });
     }
 
     return jsonOk({ match: toMatchDTO(data) });
