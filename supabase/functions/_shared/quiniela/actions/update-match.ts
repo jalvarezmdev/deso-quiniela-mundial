@@ -95,6 +95,13 @@ export async function handleUpdateMatch(
       });
     }
 
+    if (data.status === "scheduled") {
+      await ctx.supabase
+        .from("match_points")
+        .delete()
+        .eq("match_id", data.id);
+    }
+
     return jsonOk({ match: toMatchDTO(data) });
   } catch (error) {
     if (isValidationError(error)) {
