@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { CircleCheck, Loader2Icon } from "lucide-react";
+import { CircleCheck, Loader2Icon, Lock } from "lucide-react";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { getTeam } from "#/lib/teams";
+import { isMatchLocked } from "#/lib/match-lock";
 import type { Match, Prediction } from "#/lib/types";
 
 export type MatchScoreEntrySubmitInput = {
@@ -47,6 +48,7 @@ export function MatchScoreEntry({
   const home = getTeam(match.homeTeamId);
   const away = getTeam(match.awayTeamId);
   const requiresQualifiedTeam = isKnockout(match.phase);
+  const locked = isMatchLocked(match);
 
   useEffect(() => {
     setHomeGoals(String(prediction?.homeGoals ?? 0));
@@ -71,6 +73,13 @@ export function MatchScoreEntry({
 
   return (
     <form className="mt-4 space-y-5" onSubmit={handleSubmit}>
+      {locked ? (
+        <div className="flex items-center justify-center gap-2 rounded-lg bg-zinc-800/50 px-4 py-3 text-zinc-400">
+          <Lock className="h-4 w-4" />
+          <span className="text-sm font-medium">Bloqueado - partido en curso</span>
+        </div>
+      ) : null}
+
       {match.phase === "groups" ? (
         <div className="text-center text-xs  font-medium uppercase tracking-wide">
           <h3 className="text-zinc-500">{match.groupName}</h3>
@@ -94,7 +103,7 @@ export function MatchScoreEntry({
             value={homeGoals}
             onChange={(event) => setHomeGoals(event.target.value)}
             className="h-28 rounded-xl border-2 text-center text-6xl font-black tabular-nums tracking-normal text-[var(--accent)] md:h-32 md:text-7xl"
-            disabled={isSaving}
+            disabled={isSaving || locked}
             required
           />
         </div>
@@ -114,7 +123,7 @@ export function MatchScoreEntry({
             value={awayGoals}
             onChange={(event) => setAwayGoals(event.target.value)}
             className="h-28 rounded-xl border-2 text-center text-6xl font-black tabular-nums tracking-normal text-[var(--accent)] md:h-32 md:text-7xl"
-            disabled={isSaving}
+            disabled={isSaving || locked}
             required
           />
         </div>
@@ -128,7 +137,7 @@ export function MatchScoreEntry({
             value={qualifiedTeamId}
             onChange={(event) => setQualifiedTeamId(event.target.value)}
             className="h-10 w-full rounded-md border border-[--line] bg-[var(--secondary)] px-3 text-sm"
-            disabled={isSaving}
+            disabled={isSaving || locked}
             required
           >
             <option value="">Selecciona clasificado</option>
@@ -151,7 +160,7 @@ export function MatchScoreEntry({
         >
           {cancelLabel}
         </Button>
-        <Button type="submit" disabled={isSaving}>
+        <Button type="submit" disabled={isSaving || locked}>
           {isSaving ? (
             <>
               <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
