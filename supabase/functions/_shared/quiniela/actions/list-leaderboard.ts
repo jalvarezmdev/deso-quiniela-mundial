@@ -92,6 +92,14 @@ export async function handleListLeaderboard(
   if (predictionsError) return handleDbError(predictionsError)
   if (submissionsError) return handleDbError(submissionsError)
 
+  const { data: config } = await ctx.supabase
+    .from('site_config')
+    .select('value')
+    .eq('key', 'scoring_mode')
+    .maybeSingle()
+
+  const scoringMode = config?.value ?? 'phase_confirmation'
+
   const matchesById = new Map((matches as MatchesRow[]).map((match) => [match.id, match]))
 
   const submissionKey = (userId: string, phase: string) => `${userId}::${phase}`
@@ -153,7 +161,7 @@ export async function handleListLeaderboard(
     }
   }
 
-  const leaderboard = [...rows.values()].sort((a, b) => {
+  let leaderboard = [...rows.values()].sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points
     if (b.exactHits !== a.exactHits) return b.exactHits - a.exactHits
 
@@ -161,6 +169,43 @@ export async function handleListLeaderboard(
     const bTs = b.firstConfirmedAt ? new Date(b.firstConfirmedAt).getTime() : Number.MAX_SAFE_INTEGER
     return aTs - bTs
   })
+
+  if (scoringMode === 'per_match') {
+    const { data: matchPointsData } = await ctx.supabase
+      .from('match_points')
+      .select('user_id, points, computed_at')
+
+    if (matchPointsData?.length) {
+      const userAggregates = new Map<string, { points: number; exactHits: number; firstComputedAt: string }>()
+
+      for (const row of matchPointsData) {
+        const existing = userAggregates.get(row.user_id) ?? { points: 0, exactHits: 0, firstComputedAt: row.computed_at }
+        existing.points += row.points
+        if (row.points === 3) existing.exactHits += 1
+        if (row.computed_at < existing.firstComputedAt) existing.firstComputedAt = row.computed_at
+        userAggregates.set(row.user_id, existing)
+      }
+
+      leaderboard = (users as Pick<ProfilesRow, 'id' | 'nickname' | 'team_id'>[])
+        .filter((p) => userAggregates.has(p.id))
+        .map((p) => {
+          const agg = userAggregates.get(p.id)!
+          return {
+            userId: p.id,
+            nickname: p.nickname,
+            teamId: p.team_id,
+            points: agg.points,
+            exactHits: agg.exactHits,
+            firstConfirmedAt: agg.firstComputedAt,
+          }
+        })
+        .sort((a, b) =>
+          b.points - a.points || b.exactHits - a.exactHits || a.firstConfirmedAt.localeCompare(b.firstConfirmedAt),
+        )
+    } else {
+      leaderboard = []
+    }
+  }
 
   return jsonOk({ leaderboard })
 }
