@@ -33,10 +33,14 @@ function AdminPage() {
     softDeleteUser,
     refreshUsers,
     currentUser,
+    scoringMode,
+    getScoringConfig,
+    updateScoringConfig,
   } = useApp()
 
   const [notice, setNotice] = useState<string | null>(null)
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
+  const [loadingScoringConfig, setLoadingScoringConfig] = useState(true)
 
   const editableMatches = useMemo(
     () => [...state.matches].sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime()),
@@ -152,6 +156,11 @@ function AdminPage() {
     void refreshUsers()
   }, [currentUser?.isAdmin, refreshUsers])
 
+  useEffect(() => {
+    if (!currentUser?.isAdmin) return
+    void getScoringConfig().then(() => setLoadingScoringConfig(false))
+  }, [currentUser?.isAdmin, getScoringConfig])
+
   async function onResetPin(event: FormEvent<HTMLFormElement>, userId: string) {
     event.preventDefault()
     setBusyUserId(userId)
@@ -184,6 +193,15 @@ function AdminPage() {
     }
 
     setNotice('Usuario eliminado logicamente.')
+  }
+
+  async function onUpdateScoringConfig(mode: 'phase_confirmation' | 'per_match') {
+    const response = await updateScoringConfig(mode)
+    if (!response.ok) {
+      setNotice(response.message)
+      return
+    }
+    setNotice('Modo de puntuacion actualizado.')
   }
 
   return (
@@ -362,6 +380,30 @@ function AdminPage() {
                   </form>
                 )
               })}
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="text-lg font-black text-[var(--primary)]">Modo de Puntuacion</h2>
+            <p className="mt-1 text-sm text-zinc-300">
+              Selecciona como se calculan los puntos.
+            </p>
+
+            <div className="mt-4 flex gap-3">
+              <Button
+                variant={scoringMode === 'phase_confirmation' ? 'default' : 'outline'}
+                disabled={loadingScoringConfig}
+                onClick={() => void onUpdateScoringConfig('phase_confirmation')}
+              >
+                Confirmacion por Fase
+              </Button>
+              <Button
+                variant={scoringMode === 'per_match' ? 'default' : 'outline'}
+                disabled={loadingScoringConfig}
+                onClick={() => void onUpdateScoringConfig('per_match')}
+              >
+                Por Partido
+              </Button>
             </div>
           </Card>
 

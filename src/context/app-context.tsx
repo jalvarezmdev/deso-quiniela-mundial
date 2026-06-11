@@ -252,6 +252,9 @@ type AppContextValue = {
   isPhaseConfirmed: (phase: PhaseKey) => boolean
   isPhaseLockedAtNow: (phase: PhaseKey) => boolean
   getPhaseWindowAtNow: (phase: PhaseKey) => { opensAt: Date; closesAt: Date }
+  scoringMode: 'phase_confirmation' | 'per_match'
+  getScoringConfig: () => Promise<ActionResult>
+  updateScoringConfig: (mode: 'phase_confirmation' | 'per_match') => Promise<ActionResult>
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -263,6 +266,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sessionToken, setSessionToken] = useState<string | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([])
+  const [scoringMode, setScoringMode] = useState<'phase_confirmation' | 'per_match'>('phase_confirmation')
 
   const syncSignedUser = useCallback((updatedUser: SessionUserDTO) => {
     const updated = mapSessionUser(updatedUser)
@@ -923,6 +927,52 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { ok: true }
   }, [currentUser?.isAdmin, refreshLeaderboard, refreshUsersWithSession, sessionToken])
 
+  const getScoringConfig = useCallback(async (): Promise<ActionResult> => {
+    if (!currentUser?.isAdmin) {
+      return { ok: false, message: 'Solo admin puede ver configuracion.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    const response = await invokeAdminQuinielasAction<Record<string, never>, { scoringMode: 'phase_confirmation' | 'per_match' }>(
+      'get_scoring_config',
+      sessionToken,
+      {},
+    )
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    setScoringMode(response.data.scoringMode)
+    return { ok: true }
+  }, [currentUser?.isAdmin, sessionToken])
+
+  const updateScoringConfig = useCallback(async (mode: 'phase_confirmation' | 'per_match'): Promise<ActionResult> => {
+    if (!currentUser?.isAdmin) {
+      return { ok: false, message: 'Solo admin puede actualizar configuracion.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    const response = await invokeAdminQuinielasAction<{ scoringMode: 'phase_confirmation' | 'per_match' }, { scoringMode: 'phase_confirmation' | 'per_match' }>(
+      'update_scoring_config',
+      sessionToken,
+      { scoringMode: mode },
+    )
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    setScoringMode(response.data.scoringMode)
+    return { ok: true }
+  }, [currentUser?.isAdmin, sessionToken])
+
   const isPhaseConfirmed = useCallback((phase: PhaseKey) => {
     if (!currentUser) return false
     return wasPhaseConfirmed(state.submissions, currentUser.id, phase)
@@ -969,6 +1019,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     isPhaseConfirmed,
     isPhaseLockedAtNow,
     getPhaseWindowAtNow,
+    scoringMode,
+    getScoringConfig,
+    updateScoringConfig,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

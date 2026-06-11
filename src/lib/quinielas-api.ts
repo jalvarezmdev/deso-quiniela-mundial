@@ -51,6 +51,8 @@ export type AdminQuinielasAction =
   | 'create_phase_window_override'
   | 'update_phase_window_override'
   | 'delete_phase_window_override'
+  | 'get_scoring_config'
+  | 'update_scoring_config'
 
 export type MatchDTO = Match & {
   updatedAt?: string
