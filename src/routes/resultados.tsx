@@ -6,6 +6,7 @@ import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { ResultadosMatchCard } from '#/components/resultados-match-card'
 import { useApp } from '#/context/app-context'
+import { invokeAuthenticatedQuinielasAction, type ListMyMatchPointsResultDTO } from '#/lib/quinielas-api'
 import { getGroupMatchRoundMap } from '#/lib/group-rounds'
 import { getTeam } from '#/lib/teams'
 import { toVenDateTimeLabel } from '#/lib/time'
@@ -16,10 +17,29 @@ export const Route = createFileRoute('/resultados')({
 })
 
 function ResultadosPage() {
-  const { state, refreshLive } = useApp()
+  const { state, refreshLive, scoringMode, sessionToken } = useApp()
   const [countryFilter, setCountryFilter] = useState('')
   const [groupFilter, setGroupFilter] = useState('todos')
   const [matchdayFilter, setMatchdayFilter] = useState('todas')
+  const [matchPoints, setMatchPoints] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    if (scoringMode !== 'per_match' || !sessionToken) return
+
+    invokeAuthenticatedQuinielasAction<Record<string, never>, ListMyMatchPointsResultDTO>(
+      'list_my_match_points',
+      sessionToken,
+      {},
+    ).then((response) => {
+      if (response.ok) {
+        const map: Record<string, number> = {}
+        for (const entry of response.data.matchPoints) {
+          map[entry.matchId] = entry.points
+        }
+        setMatchPoints(map)
+      }
+    })
+  }, [scoringMode, sessionToken])
 
   useEffect(() => {
     refreshLive()
@@ -208,14 +228,20 @@ function ResultadosPage() {
                   const away = getTeam(match.awayTeamId)
 
                   return (
-                    <ResultadosMatchCard
-                      key={match.id}
-                      match={match}
-                      home={home}
-                      away={away}
-                      phaseLabel={phaseLabel(match.phase)}
-                      isLiveHighlighted={match.status === 'live'}
-                    />
+                    <div key={match.id}>
+                      <ResultadosMatchCard
+                        match={match}
+                        home={home}
+                        away={away}
+                        phaseLabel={phaseLabel(match.phase)}
+                        isLiveHighlighted={match.status === 'live'}
+                      />
+                      {scoringMode === 'per_match' && matchPoints[match.id] !== undefined && (
+                        <p className="mt-1 text-sm font-medium text-green-600">
+                          +{matchPoints[match.id]} puntos
+                        </p>
+                      )}
+                    </div>
                   )
                 })}
               </div>

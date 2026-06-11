@@ -43,6 +43,7 @@ import { handleUpdateMatch } from "../_shared/quiniela/actions/update-match.ts";
 import { handleUpdatePhaseSubmission } from "../_shared/quiniela/actions/update-phase-submission.ts";
 import { handleUpdatePhaseWindowOverride } from "../_shared/quiniela/actions/update-phase-window-override.ts";
 import { handleUpdatePrediction } from "../_shared/quiniela/actions/update-prediction.ts";
+import { handleListMyMatchPoints } from "../_shared/quiniela/actions/list-my-match-points.ts";
 
 type PublicAction =
   | "get_match"
@@ -61,7 +62,8 @@ type AuthenticatedAction =
   | "get_my_phase_submission"
   | "list_my_phase_submissions"
   | "delete_phase_submission"
-  | "list_leaderboard";
+  | "list_leaderboard"
+  | "list_my_match_points";
 
 type AdminAction =
   | "create_match"
@@ -100,6 +102,7 @@ const authenticatedActionHandlers: Record<
   list_my_phase_submissions: handleListMyPhaseSubmissions,
   delete_phase_submission: handleDeletePhaseSubmission,
   list_leaderboard: handleListLeaderboard,
+  list_my_match_points: handleListMyMatchPoints,
 };
 
 const adminActionHandlers: Record<

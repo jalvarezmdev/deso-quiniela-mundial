@@ -43,6 +43,7 @@ export type AuthenticatedQuinielasAction =
   | 'list_my_phase_submissions'
   | 'delete_phase_submission'
   | 'list_leaderboard'
+  | 'list_my_match_points'
 
 export type AdminQuinielasAction =
   | 'create_match'
@@ -89,6 +90,10 @@ export type ListPhaseWindowOverridesResultDTO = {
 
 export type ListLeaderboardResultDTO = {
   leaderboard: LeaderboardRowDTO[]
+}
+
+export type ListMyMatchPointsResultDTO = {
+  matchPoints: { matchId: string; points: number }[]
 }
 
 function asQuinielasError(err: unknown): QuinielasError {
