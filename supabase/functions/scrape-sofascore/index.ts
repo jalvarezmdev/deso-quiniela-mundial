@@ -3,6 +3,7 @@ import {
   getSupabaseAdminClient,
   type SupabaseAdminClient,
 } from "../_shared/general/supabase-client.ts";
+import { computeAndStoreMatchPoints } from "../_shared/quiniela/helpers/scoring.ts";
 
 type IncomingMatch = {
   externalMatchRef: string;
@@ -152,6 +153,17 @@ serve(async (req) => {
 
       if (error) continue;
       updated += 1;
+
+      if (payload.status === "final" || payload.status === "live") {
+        await computeAndStoreMatchPoints(supabase, {
+          matchId: id,
+          phase: payload.phase as string,
+          homeGoals: payload.home_goals as number,
+          awayGoals: payload.away_goals as number,
+          qualifiedTeamId: payload.qualified_team_id as string | null,
+        });
+      }
+
       continue;
     }
 
@@ -161,6 +173,16 @@ serve(async (req) => {
 
     if (error) continue;
     inserted += 1;
+
+    if (payload.status === "final" || payload.status === "live") {
+      await computeAndStoreMatchPoints(supabase, {
+        matchId: id,
+        phase: payload.phase as string,
+        homeGoals: payload.home_goals as number,
+        awayGoals: payload.away_goals as number,
+        qualifiedTeamId: payload.qualified_team_id as string | null,
+      });
+    }
   }
 
   return new Response(JSON.stringify({
