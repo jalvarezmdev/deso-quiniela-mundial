@@ -82,6 +82,17 @@ export type LeaderboardRow = {
   firstConfirmedAt: string | null
 }
 
+// Per-match scoring
+export type ScoringMode = 'phase_confirmation' | 'per_match'
+
+export type MatchPoint = {
+  userId: string
+  matchId: string
+  phase: PhaseKey
+  points: number
+  computedAt: string
+}
+
 export const PHASES: { key: PhaseKey; label: string }[] = [
   { key: 'groups', label: 'Fase de Grupos' },
   { key: 'roundOf16', label: '16vos' },
