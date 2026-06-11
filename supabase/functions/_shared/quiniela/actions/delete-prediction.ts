@@ -50,6 +50,12 @@ export async function handleDeletePrediction(
       return jsonError("NOT_FOUND", "Prediccion no encontrada.", 404);
     }
 
+    await ctx.supabase
+      .from("match_points")
+      .delete()
+      .eq("user_id", ctx.me.id)
+      .eq("match_id", lookup.matchId);
+
     return jsonOk({ deleted: true });
   } catch (error) {
     if (isValidationError(error)) {

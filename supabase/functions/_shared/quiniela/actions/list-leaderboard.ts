@@ -1,4 +1,5 @@
 import type { AuthenticatedActionContext } from '../helpers/action-types.ts'
+import { computeMatchPoints } from '../helpers/scoring.ts'
 import {
   handleDbError,
   jsonOk,
@@ -15,51 +16,6 @@ type LeaderboardRow = {
   points: number
   exactHits: number
   firstConfirmedAt: string | null
-}
-
-function resultSign(homeGoals: number, awayGoals: number): 1 | 0 | -1 {
-  if (homeGoals > awayGoals) return 1
-  if (homeGoals < awayGoals) return -1
-  return 0
-}
-
-function computeMatchPoints({
-  phase,
-  homeGoals,
-  awayGoals,
-  qualifiedTeamId,
-}: {
-  phase: string
-  homeGoals: number
-  awayGoals: number
-  qualifiedTeamId: string | null
-}, {
-  predictedHomeGoals,
-  predictedAwayGoals,
-  predictedQualifiedTeamId,
-}: {
-  predictedHomeGoals: number
-  predictedAwayGoals: number
-  predictedQualifiedTeamId: string | null
-}): number {
-  const exactScore =
-    homeGoals === predictedHomeGoals &&
-    awayGoals === predictedAwayGoals
-
-  if (exactScore) {
-    return 3
-  }
-
-  if (phase !== 'groups') {
-    if (qualifiedTeamId && predictedQualifiedTeamId === qualifiedTeamId) {
-      return 1
-    }
-    return 0
-  }
-
-  const expectedSign = resultSign(homeGoals, awayGoals)
-  const predictedSign = resultSign(predictedHomeGoals, predictedAwayGoals)
-  return expectedSign === predictedSign ? 1 : 0
 }
 
 export async function handleListLeaderboard(
@@ -141,19 +97,15 @@ export async function handleListLeaderboard(
       continue
     }
 
-    const gained = computeMatchPoints(
-      {
-        phase: match.phase,
-        homeGoals: match.home_goals,
-        awayGoals: match.away_goals,
-        qualifiedTeamId: match.qualified_team_id,
-      },
-      {
-        predictedHomeGoals: prediction.home_goals,
-        predictedAwayGoals: prediction.away_goals,
-        predictedQualifiedTeamId: prediction.predicted_qualified_team_id,
-      },
-    )
+    const gained = computeMatchPoints({
+      phase: match.phase,
+      homeGoals: match.home_goals,
+      awayGoals: match.away_goals,
+      qualifiedTeamId: match.qualified_team_id,
+      predictedHomeGoals: prediction.home_goals,
+      predictedAwayGoals: prediction.away_goals,
+      predictedQualifiedTeamId: prediction.predicted_qualified_team_id,
+    })
 
     row.points += gained
     if (gained === 3) {
