@@ -1,6 +1,5 @@
 import type { AuthenticatedActionContext } from "../helpers/action-types.ts";
 import {
-  assertPhaseEditable,
   handleDbError,
   hasPhaseSubmission,
   isValidationError,
@@ -21,12 +20,6 @@ export async function handleCreatePhaseSubmission(
   try {
     const phase = parsePhaseKey(ctx.payload.phase);
 
-    const lockedError = await assertPhaseEditable({
-      supabase: ctx.supabase,
-      phase,
-    });
-    if (lockedError) return lockedError;
-
     const alreadySubmitted = await hasPhaseSubmission({
       supabase: ctx.supabase,
       userId: ctx.me.id,
@@ -39,18 +32,17 @@ export async function handleCreatePhaseSubmission(
 
     const { data: matches, error: matchesError } = await ctx.supabase
       .from("matches")
-      .select("id, kickoff_at")
+      .select("id, kickoff_at, status")
       .eq("phase", phase)
       .is("deleted_at", null);
 
     if (matchesError) return handleDbError(matchesError);
 
-    const matchRows = (matches as { id: string; kickoff_at: string }[] | null) ??
+    const matchRows = (matches as { id: string; kickoff_at: string; status: string }[] | null) ??
       [];
-    const matchIds = matchRows.map((match) => match.id);
     const matchKickoffAts = matchRows.map((match) => match.kickoff_at);
 
-    if (matchIds.length === 0) {
+    if (matchRows.length === 0) {
       return jsonError(
         "VALIDATION_ERROR",
         "No hay partidos disponibles para confirmar esta fase.",
@@ -63,6 +55,18 @@ export async function handleCreatePhaseSubmission(
       return jsonError(
         "VALIDATION_ERROR",
         `Debes esperar a que todos los cruces de la fase esten definidos antes de confirmar. Faltan ${missingFixtureCount}.`,
+        400,
+      );
+    }
+
+    const scheduledMatchIds = matchRows
+      .filter((match) => match.status === "scheduled")
+      .map((match) => match.id);
+
+    if (scheduledMatchIds.length === 0) {
+      return jsonError(
+        "VALIDATION_ERROR",
+        "No hay partidos programados para confirmar esta fase.",
         400,
       );
     }
@@ -80,7 +84,7 @@ export async function handleCreatePhaseSubmission(
         prediction.match_id
       ) ?? [];
     const missingPredictionMatchIds = getMissingPredictionMatchIds({
-      matchIds,
+      matchIds: scheduledMatchIds,
       predictionMatchIds,
     });
 

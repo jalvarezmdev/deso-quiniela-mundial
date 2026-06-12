@@ -646,98 +646,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return isPhaseEditableAtNow(phase)
   }, [ready, currentUser, activePhase, state.submissions, isPhaseEditableAtNow])
 
-  const savePrediction = useCallback(async (payload: SavePredictionInput): Promise<ActionResult> => {
-    if (!currentUser) {
-      return { ok: false as const, message: 'Debes iniciar sesion.' }
-    }
-
-    if (!sessionToken) {
-      return { ok: false as const, message: 'Sesion invalida. Inicia sesion de nuevo.' }
-    }
-
-    if (!canEditPhase(payload.phase)) {
-      return { ok: false as const, message: 'No puedes editar esa fase ahora.' }
-    }
-
-    const hasPrediction = hasLocalPrediction(state.predictions, {
-      userId: currentUser.id,
-      phase: payload.phase,
-      matchId: payload.matchId,
-    })
-    const response = await savePredictionWithFallback(
-      (action, input) =>
-        invokeAuthenticatedQuinielasAction<SavePredictionInput, { prediction: PredictionDTO }>(
-          action,
-          sessionToken,
-          input,
-        ),
-      payload,
-      hasPrediction,
-    )
-
-    if (!response.ok) {
-      return { ok: false, message: response.error.message }
-    }
-
-    const updatedPrediction = mapPredictionDTO(response.data.prediction)
-    setState((prev) => {
-      const nextPredictions = [...prev.predictions]
-      const existingIndex = nextPredictions.findIndex(
-        (item) =>
-          item.userId === currentUser.id &&
-          item.phase === payload.phase &&
-          item.matchId === payload.matchId,
-      )
-
-      if (existingIndex >= 0) {
-        nextPredictions[existingIndex] = updatedPrediction
-      } else {
-        nextPredictions.push(updatedPrediction)
-      }
-
-      return {
-        ...prev,
-        predictions: nextPredictions,
-      }
-    })
-
-    return { ok: true }
-  }, [canEditPhase, currentUser, sessionToken, state.predictions])
-
-  const confirmPhase = useCallback(async (phase: PhaseKey): Promise<ActionResult> => {
-    if (!currentUser) {
-      return { ok: false as const, message: 'Debes iniciar sesion.' }
-    }
-
-    if (!sessionToken) {
-      return { ok: false as const, message: 'Sesion invalida. Inicia sesion de nuevo.' }
-    }
-
-    if (!canEditPhase(phase)) {
-      return { ok: false as const, message: 'Esta fase ya no se puede confirmar.' }
-    }
-
-    const response = await invokeAuthenticatedQuinielasAction<
-      { phase: PhaseKey },
-      { submission: PhaseSubmissionDTO }
-    >('create_phase_submission', sessionToken, { phase })
-
-    if (!response.ok) {
-      return { ok: false, message: response.error.message }
-    }
-
-    const submission = mapSubmissionDTO(response.data.submission)
-
-    setState((prev) => ({
-      ...prev,
-      submissions: [...prev.submissions.filter((item) => !(item.userId === submission.userId && item.phase === submission.phase)), submission],
-    }))
-
-    await refreshLeaderboard()
-
-    return { ok: true }
-  }, [canEditPhase, currentUser, refreshLeaderboard, sessionToken])
-
   const refreshLive = useCallback(() => {
     void refreshMatches()
   }, [refreshMatches])
@@ -1037,6 +945,108 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!currentUser) return false
     return wasPhaseConfirmed(state.submissions, currentUser.id, phase)
   }, [currentUser, state.submissions])
+
+  const savePrediction = useCallback(async (payload: SavePredictionInput): Promise<ActionResult> => {
+    if (!currentUser) {
+      return { ok: false as const, message: 'Debes iniciar sesion.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false as const, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    const match = state.matches.find(m => m.id === payload.matchId && m.phase === payload.phase)
+
+    if (!match) {
+      return { ok: false as const, message: 'Partido no encontrado.' }
+    }
+
+    if (match.status !== 'scheduled') {
+      return { ok: false as const, message: 'No se puede modificar el pronostico: el partido esta en curso o finalizado.' }
+    }
+
+    if (!currentUser.isAdmin && isPhaseConfirmed(payload.phase)) {
+      return { ok: false as const, message: 'La fase ya fue confirmada y no admite cambios.' }
+    }
+
+    const hasPrediction = hasLocalPrediction(state.predictions, {
+      userId: currentUser.id,
+      phase: payload.phase,
+      matchId: payload.matchId,
+    })
+    const response = await savePredictionWithFallback(
+      (action, input) =>
+        invokeAuthenticatedQuinielasAction<SavePredictionInput, { prediction: PredictionDTO }>(
+          action,
+          sessionToken,
+          input,
+        ),
+      payload,
+      hasPrediction,
+    )
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    const updatedPrediction = mapPredictionDTO(response.data.prediction)
+    setState((prev) => {
+      const nextPredictions = [...prev.predictions]
+      const existingIndex = nextPredictions.findIndex(
+        (item) =>
+          item.userId === currentUser.id &&
+          item.phase === payload.phase &&
+          item.matchId === payload.matchId,
+      )
+
+      if (existingIndex >= 0) {
+        nextPredictions[existingIndex] = updatedPrediction
+      } else {
+        nextPredictions.push(updatedPrediction)
+      }
+
+      return {
+        ...prev,
+        predictions: nextPredictions,
+      }
+    })
+
+    return { ok: true }
+  }, [currentUser, sessionToken, state.predictions, state.matches, isPhaseConfirmed])
+
+  const confirmPhase = useCallback(async (phase: PhaseKey): Promise<ActionResult> => {
+    if (!currentUser) {
+      return { ok: false as const, message: 'Debes iniciar sesion.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false as const, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    if (isPhaseConfirmed(phase)) {
+      return { ok: false as const, message: 'Esta fase ya fue confirmada.' }
+    }
+
+    const response = await invokeAuthenticatedQuinielasAction<
+      { phase: PhaseKey },
+      { submission: PhaseSubmissionDTO }
+    >('create_phase_submission', sessionToken, { phase })
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    const submission = mapSubmissionDTO(response.data.submission)
+
+    setState((prev) => ({
+      ...prev,
+      submissions: [...prev.submissions.filter((item) => !(item.userId === submission.userId && item.phase === submission.phase)), submission],
+    }))
+
+    await refreshLeaderboard()
+
+    return { ok: true }
+  }, [currentUser, sessionToken, isPhaseConfirmed, refreshLeaderboard])
 
   const isPhaseLockedAtNow = useCallback((phase: PhaseKey) => {
     if (!ready) return false

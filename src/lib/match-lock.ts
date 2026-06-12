@@ -19,3 +19,15 @@ export function isMatchLocked(match: Match, now: Date = new Date()): boolean {
 
   return false
 }
+
+/**
+ * Determines if a user can predict a specific match.
+ * Admins can always predict. Regular users only on 'scheduled' matches
+ * when they haven't confirmed the phase.
+ */
+export function canPredictMatch(match: Match, isAdmin: boolean, phaseConfirmed: boolean): boolean {
+  if (isAdmin) return true
+  if (phaseConfirmed) return false
+  return match.status === 'scheduled'
+}
+

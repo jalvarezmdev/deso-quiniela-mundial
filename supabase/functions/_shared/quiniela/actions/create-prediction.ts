@@ -1,8 +1,6 @@
 import type { AuthenticatedActionContext } from "../helpers/action-types.ts";
-import { isMatchLocked } from "../helpers/match-lock.ts";
 import { computeAndStoreMatchPoints } from "../helpers/scoring.ts";
 import {
-  assertPhaseEditable,
   handleDbError,
   hasPhaseSubmission,
   isValidationError,
@@ -23,27 +21,6 @@ export async function handleCreatePrediction(
   try {
     const input = parsePredictionWriteInput(ctx.payload);
 
-    const lockedError = await assertPhaseEditable({
-      supabase: ctx.supabase,
-      phase: input.phase,
-    });
-    if (lockedError) return lockedError;
-
-    const phaseSubmitted = await hasPhaseSubmission({
-      supabase: ctx.supabase,
-      userId: ctx.me.id,
-      phase: input.phase,
-    });
-
-    if (phaseSubmitted instanceof Response) return phaseSubmitted;
-    if (phaseSubmitted) {
-      return jsonError(
-        "CONFLICT",
-        "La fase ya fue confirmada y no admite cambios.",
-        409,
-      );
-    }
-
     const { data: match, error: matchError } = await ctx.supabase
       .from("matches")
       .select("*")
@@ -63,10 +40,25 @@ export async function handleCreatePrediction(
       );
     }
 
-    if (isMatchLocked(match, new Date())) {
+    if (match.status !== "scheduled") {
       return jsonError(
         "CONFLICT",
         "No se puede modificar el pronostico: el partido esta en curso o finalizado.",
+        409,
+      );
+    }
+
+    const phaseSubmitted = await hasPhaseSubmission({
+      supabase: ctx.supabase,
+      userId: ctx.me.id,
+      phase: input.phase,
+    });
+
+    if (phaseSubmitted instanceof Response) return phaseSubmitted;
+    if (phaseSubmitted) {
+      return jsonError(
+        "CONFLICT",
+        "La fase ya fue confirmada y no admite cambios.",
         409,
       );
     }

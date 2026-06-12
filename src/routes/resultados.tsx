@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { RequireAuth } from '#/components/layout/require-auth'
 import { PageShell } from '#/components/layout/page-shell'
@@ -11,13 +11,15 @@ import { getGroupMatchRoundMap } from '#/lib/group-rounds'
 import { getTeam } from '#/lib/teams'
 import { toVenDateTimeLabel } from '#/lib/time'
 import { PHASES, type PhaseKey } from '#/lib/types'
+import { canPredictMatch } from '#/lib/match-lock'
 
 export const Route = createFileRoute('/resultados')({
   component: ResultadosPage,
 })
 
 function ResultadosPage() {
-  const { state, refreshLive, scoringMode, sessionToken } = useApp()
+  const { state, refreshLive, scoringMode, sessionToken, currentUser, isPhaseConfirmed } = useApp()
+  const navigate = useNavigate()
   const [countryFilter, setCountryFilter] = useState('')
   const [groupFilter, setGroupFilter] = useState('todos')
   const [matchdayFilter, setMatchdayFilter] = useState('todas')
@@ -226,6 +228,9 @@ function ResultadosPage() {
                 {bucket.matches.map((match) => {
                   const home = getTeam(match.homeTeamId)
                   const away = getTeam(match.awayTeamId)
+                  const isAdmin = Boolean(currentUser?.isAdmin)
+                  const phaseConfirmed = isPhaseConfirmed(match.phase)
+                  const userCanPredict = canPredictMatch(match, isAdmin, phaseConfirmed)
 
                   return (
                     <div key={match.id}>
@@ -235,6 +240,8 @@ function ResultadosPage() {
                         away={away}
                         phaseLabel={phaseLabel(match.phase)}
                         isLiveHighlighted={match.status === 'live'}
+                        canPredict={userCanPredict}
+                        onPredict={() => void navigate({ to: '/quiniela', search: { phasePreview: undefined } })}
                       />
                       {scoringMode === 'per_match' && matchPoints[match.id] !== undefined && (
                         <p className="mt-1 text-sm font-medium text-green-600">

@@ -22,6 +22,8 @@ type ResultadosMatchCardProps = {
   away: Team
   phaseLabel: string
   isLiveHighlighted?: boolean
+  canPredict?: boolean
+  onPredict?: () => void
 }
 
 export function ResultadosMatchCard({
@@ -30,6 +32,8 @@ export function ResultadosMatchCard({
   away,
   phaseLabel,
   isLiveHighlighted = false,
+  canPredict = false,
+  onPredict,
 }: ResultadosMatchCardProps) {
   const cardClassName = isLiveHighlighted
     ? 'rounded-lg border-lime-400/60 bg-lime-500/5 ring-1 ring-lime-400/30 p-3 md:p-4'
@@ -87,6 +91,18 @@ export function ResultadosMatchCard({
             onClose={() => setShowPredictions(false)}
           />
         </>
+      )}
+
+      {match.status === 'scheduled' && canPredict && onPredict && (
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            onClick={onPredict}
+            className="rounded-lg border border-[var(--accent)]/60 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)] transition hover:bg-[var(--accent)]/20"
+          >
+            Cargar
+          </button>
+        </div>
       )}
     </Card>
   )
