@@ -37,6 +37,7 @@ import { handleListMyPredictions } from "../_shared/quiniela/actions/list-my-pre
 import { handleListPhaseSubmissionsAdmin } from "../_shared/quiniela/actions/list-phase-submissions-admin.ts";
 import { handleListPhaseWindowOverrides } from "../_shared/quiniela/actions/list-phase-window-overrides.ts";
 import { handleListPredictionsAdmin } from "../_shared/quiniela/actions/list-predictions-admin.ts";
+import { handleListPredictionsForMatch } from "../_shared/quiniela/actions/list-predictions-for-match.ts";
 import { handleGetScoringConfig } from "../_shared/quiniela/actions/get-scoring-config.ts";
 import { handleUpdateScoringConfig } from "../_shared/quiniela/actions/update-scoring-config.ts";
 import { handleUpdateMatch } from "../_shared/quiniela/actions/update-match.ts";
@@ -63,7 +64,8 @@ type AuthenticatedAction =
   | "list_my_phase_submissions"
   | "delete_phase_submission"
   | "list_leaderboard"
-  | "list_my_match_points";
+  | "list_my_match_points"
+  | "list_predictions_for_match";
 
 type AdminAction =
   | "create_match"
@@ -103,6 +105,7 @@ const authenticatedActionHandlers: Record<
   delete_phase_submission: handleDeletePhaseSubmission,
   list_leaderboard: handleListLeaderboard,
   list_my_match_points: handleListMyMatchPoints,
+  list_predictions_for_match: handleListPredictionsForMatch,
 };
 
 const adminActionHandlers: Record<
