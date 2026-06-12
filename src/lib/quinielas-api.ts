@@ -44,6 +44,7 @@ export type AuthenticatedQuinielasAction =
   | 'delete_phase_submission'
   | 'list_leaderboard'
   | 'list_my_match_points'
+  | 'list_predictions_for_match'
 
 export type AdminQuinielasAction =
   | 'create_match'
@@ -63,6 +64,16 @@ export type PredictionDTO = Prediction
 export type PhaseSubmissionDTO = PhaseSubmission
 export type PhaseWindowOverrideDTO = PhaseWindowOverride
 export type LeaderboardRowDTO = LeaderboardRow
+
+export type PredictionForMatchDTO = {
+  nickname: string
+  homeGoals: number
+  awayGoals: number
+}
+
+export type ListPredictionsForMatchResultDTO = {
+  predictions: PredictionForMatchDTO[]
+}
 
 export type ListMatchesInput = {
   phase?: PhaseKey
