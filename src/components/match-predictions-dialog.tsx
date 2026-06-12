@@ -23,6 +23,7 @@ export function MatchPredictionsDialog({
     ListPredictionsForMatchResultDTO['predictions']
   >([])
   const [loading, setLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const home = getTeam(match.homeTeamId)
   const away = getTeam(match.awayTeamId)
@@ -33,6 +34,9 @@ export function MatchPredictionsDialog({
     let cancelled = false
 
     setLoading(true)
+    setErrorMessage(null)
+    setPredictions([])
+
     invokeAuthenticatedQuinielasAction<
       { matchId: string },
       ListPredictionsForMatchResultDTO
@@ -41,6 +45,8 @@ export function MatchPredictionsDialog({
         if (cancelled) return
         if (response.ok) {
           setPredictions(response.data.predictions)
+        } else {
+          setErrorMessage(response.error.message)
         }
         setLoading(false)
       },
@@ -89,6 +95,8 @@ export function MatchPredictionsDialog({
         <div className="mt-4">
           {loading ? (
             <p className="text-sm text-zinc-400">Cargando predicciones...</p>
+          ) : errorMessage ? (
+            <p className="text-sm text-red-400">{errorMessage}</p>
           ) : predictions.length === 0 ? (
             <p className="text-sm text-zinc-400">
               No hay predicciones para este partido
