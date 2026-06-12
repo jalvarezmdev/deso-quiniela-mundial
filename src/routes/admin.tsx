@@ -22,6 +22,10 @@ export const Route = createFileRoute('/admin')({
 })
 
 function AdminPage() {
+  function phaseLabel(phase: PhaseKey): string {
+    return PHASES.find((item) => item.key === phase)?.label ?? phase
+  }
+
   const {
     state,
     setMatchResult,
@@ -36,11 +40,15 @@ function AdminPage() {
     scoringMode,
     getScoringConfig,
     updateScoringConfig,
+    forcedActivePhase,
+    getForcedActivePhase,
+    updateForcedActivePhase,
   } = useApp()
 
   const [notice, setNotice] = useState<string | null>(null)
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
   const [loadingScoringConfig, setLoadingScoringConfig] = useState(true)
+  const [loadingForcedPhase, setLoadingForcedPhase] = useState(true)
 
   const editableMatches = useMemo(
     () => [...state.matches].sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime()),
@@ -161,6 +169,11 @@ function AdminPage() {
     void getScoringConfig().then(() => setLoadingScoringConfig(false))
   }, [currentUser?.isAdmin, getScoringConfig])
 
+  useEffect(() => {
+    if (!currentUser?.isAdmin) return
+    void getForcedActivePhase().then(() => setLoadingForcedPhase(false))
+  }, [currentUser?.isAdmin, getForcedActivePhase])
+
   async function onResetPin(event: FormEvent<HTMLFormElement>, userId: string) {
     event.preventDefault()
     setBusyUserId(userId)
@@ -202,6 +215,15 @@ function AdminPage() {
       return
     }
     setNotice('Modo de puntuacion actualizado.')
+  }
+
+  async function onUpdateForcedActivePhase(phase: PhaseKey | null) {
+    const response = await updateForcedActivePhase(phase)
+    if (!response.ok) {
+      setNotice(response.message)
+      return
+    }
+    setNotice(phase ? `Fase activa forzada a ${phaseLabel(phase)}.` : 'Fase activa restaurada a automatica.')
   }
 
   return (
@@ -404,6 +426,33 @@ function AdminPage() {
               >
                 Por Partido
               </Button>
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="text-lg font-black text-[var(--primary)]">Fase Activa</h2>
+            <p className="mt-1 text-sm text-zinc-300">
+              Forzar la fase que ven los usuarios no admin. Por defecto se calcula automaticamente.
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                variant={forcedActivePhase === null ? 'default' : 'outline'}
+                disabled={loadingForcedPhase}
+                onClick={() => void onUpdateForcedActivePhase(null)}
+              >
+                Automatica
+              </Button>
+              {PHASES.map((phase) => (
+                <Button
+                  key={phase.key}
+                  variant={forcedActivePhase === phase.key ? 'default' : 'outline'}
+                  disabled={loadingForcedPhase}
+                  onClick={() => void onUpdateForcedActivePhase(phase.key)}
+                >
+                  {phase.label}
+                </Button>
+              ))}
             </div>
           </Card>
 

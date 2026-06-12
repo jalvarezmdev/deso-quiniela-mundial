@@ -31,6 +31,8 @@ export type PublicQuinielasAction =
   | 'list_matches'
   | 'get_phase_window_override'
   | 'list_phase_window_overrides'
+  | 'get_scoring_config'
+  | 'get_forced_active_phase'
 
 export type AuthenticatedQuinielasAction =
   | 'create_prediction'
@@ -55,6 +57,7 @@ export type AdminQuinielasAction =
   | 'delete_phase_window_override'
   | 'get_scoring_config'
   | 'update_scoring_config'
+  | 'update_forced_active_phase'
 
 export type MatchDTO = Match & {
   updatedAt?: string

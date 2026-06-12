@@ -121,5 +121,5 @@ export function getActivePhase(state: AppState, now: Date): PhaseKey {
     }
   }
 
-  return 'final'
+  return 'groups'
 }

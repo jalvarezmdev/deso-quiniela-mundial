@@ -21,7 +21,7 @@ export async function handleListPredictionsForMatch(
 
     const { data, error } = await ctx.supabase
       .from("predictions")
-      .select("home_goals, away_goals, users(nickname)")
+      .select("home_goals, away_goals, profiles(nickname)")
       .eq("match_id", matchId);
 
     if (error) return handleDbError(error);
@@ -29,9 +29,9 @@ export async function handleListPredictionsForMatch(
     const predictions: PredictionWithNickname[] = (data as unknown as Array<{
       home_goals: number;
       away_goals: number;
-      users: { nickname: string } | null;
+      profiles: { nickname: string } | null;
     }>).map((row) => ({
-      nickname: row.users?.nickname ?? "Sin nombre",
+      nickname: row.profiles?.nickname ?? "Sin nombre",
       homeGoals: row.home_goals,
       awayGoals: row.away_goals,
     })).sort((a, b) => a.nickname.localeCompare(b.nickname));

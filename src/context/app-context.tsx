@@ -255,6 +255,9 @@ type AppContextValue = {
   scoringMode: 'phase_confirmation' | 'per_match'
   getScoringConfig: () => Promise<ActionResult>
   updateScoringConfig: (mode: 'phase_confirmation' | 'per_match') => Promise<ActionResult>
+  forcedActivePhase: PhaseKey | null
+  getForcedActivePhase: () => Promise<ActionResult>
+  updateForcedActivePhase: (phase: PhaseKey | null) => Promise<ActionResult>
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -267,6 +270,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([])
   const [scoringMode, setScoringMode] = useState<'phase_confirmation' | 'per_match'>('phase_confirmation')
+  const [forcedActivePhase, setForcedActivePhase] = useState<PhaseKey | null>(null)
 
   const syncSignedUser = useCallback((updatedUser: SessionUserDTO) => {
     const updated = mapSessionUser(updatedUser)
@@ -443,6 +447,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       await refreshMatches()
 
+      if (cancelled) return
+
+      const forcedPhaseResponse = await invokeQuinielasAction<Record<string, never>, { forcedActivePhase: PhaseKey | null }>(
+        'get_forced_active_phase',
+        {},
+      )
+      if (!cancelled && forcedPhaseResponse.ok) {
+        setForcedActivePhase(forcedPhaseResponse.data.forcedActivePhase)
+      }
+
       if (!cancelled) {
         setReady(true)
       }
@@ -461,9 +475,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [ready, sessionToken])
 
   const activePhase = useMemo(() => {
+    if (forcedActivePhase) return forcedActivePhase
     const now = ready ? new Date() : new Date(HYDRATION_SAFE_NOW_ISO)
     return getActivePhase(state, now)
-  }, [ready, state])
+  }, [ready, state, forcedActivePhase])
 
   const teamsById = useMemo(() => {
     const output: Record<string, string> = {}
@@ -973,6 +988,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { ok: true }
   }, [currentUser?.isAdmin, sessionToken])
 
+  const getForcedActivePhase = useCallback(async (): Promise<ActionResult> => {
+    if (!currentUser?.isAdmin) {
+      return { ok: false, message: 'Solo admin puede ver configuracion.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    const response = await invokeQuinielasAction<Record<string, never>, { forcedActivePhase: PhaseKey | null }>(
+      'get_forced_active_phase',
+      {},
+    )
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    setForcedActivePhase(response.data.forcedActivePhase)
+    return { ok: true }
+  }, [currentUser?.isAdmin, sessionToken])
+
+  const updateForcedActivePhase = useCallback(async (phase: PhaseKey | null): Promise<ActionResult> => {
+    if (!currentUser?.isAdmin) {
+      return { ok: false, message: 'Solo admin puede actualizar configuracion.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    const response = await invokeAdminQuinielasAction<{ forcedActivePhase: PhaseKey | null }, { forcedActivePhase: PhaseKey | null }>(
+      'update_forced_active_phase',
+      sessionToken,
+      { forcedActivePhase: phase },
+    )
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    setForcedActivePhase(response.data.forcedActivePhase)
+    return { ok: true }
+  }, [currentUser?.isAdmin, sessionToken])
+
   const isPhaseConfirmed = useCallback((phase: PhaseKey) => {
     if (!currentUser) return false
     return wasPhaseConfirmed(state.submissions, currentUser.id, phase)
@@ -1022,6 +1082,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     scoringMode,
     getScoringConfig,
     updateScoringConfig,
+    forcedActivePhase,
+    getForcedActivePhase,
+    updateForcedActivePhase,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
