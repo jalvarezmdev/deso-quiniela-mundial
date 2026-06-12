@@ -1,0 +1,620 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - img [ref=e7]
+        - generic [ref=e20]:
+          - 'link "World Cup 1 d : 02 h : 53 m : 38 s" [ref=e21] [cursor=pointer]':
+            - /url: /football/tournament/world/world-championship/16
+            - generic [ref=e22]:
+              - img "World Cup" [ref=e24]
+              - generic [ref=e25]:
+                - generic [ref=e26]: "1"
+                - generic [ref=e27]: d
+                - generic [ref=e28]: ":"
+                - generic [ref=e29]: "02"
+                - generic [ref=e30]: h
+                - generic [ref=e31]: ":"
+                - generic [ref=e32]: "53"
+                - generic [ref=e33]: m
+                - generic [ref=e34]: ":"
+                - generic [ref=e35]: "38"
+                - generic [ref=e36]: s
+          - generic [ref=e39]:
+            - link "Group A Mexico South Africa South Korea Czechia" [ref=e42] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e43]:
+                - generic [ref=e44]: Group A
+                - generic [ref=e45]:
+                  - img "Mexico" [ref=e46]
+                  - img "South Africa" [ref=e47]
+                  - img "South Korea" [ref=e48]
+                  - img "Czechia" [ref=e49]
+            - link "Group B Canada Bosnia & Herzegovina Qatar Switzerland" [ref=e52] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e53]:
+                - generic [ref=e54]: Group B
+                - generic [ref=e55]:
+                  - img "Canada" [ref=e56]
+                  - img "Bosnia & Herzegovina" [ref=e57]
+                  - img "Qatar" [ref=e58]
+                  - img "Switzerland" [ref=e59]
+            - link "Group C Brazil Morocco Haiti Scotland" [ref=e62] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e63]:
+                - generic [ref=e64]: Group C
+                - generic [ref=e65]:
+                  - img "Brazil" [ref=e66]
+                  - img "Morocco" [ref=e67]
+                  - img "Haiti" [ref=e68]
+                  - img "Scotland" [ref=e69]
+            - link "Group D USA Paraguay Australia Türkiye" [ref=e72] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e73]:
+                - generic [ref=e74]: Group D
+                - generic [ref=e75]:
+                  - img "USA" [ref=e76]
+                  - img "Paraguay" [ref=e77]
+                  - img "Australia" [ref=e78]
+                  - img "Türkiye" [ref=e79]
+            - link "Group E Germany Curaçao Côte d'Ivoire Ecuador" [ref=e82] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e83]:
+                - generic [ref=e84]: Group E
+                - generic [ref=e85]:
+                  - img "Germany" [ref=e86]
+                  - img "Curaçao" [ref=e87]
+                  - img "Côte d'Ivoire" [ref=e88]
+                  - img "Ecuador" [ref=e89]
+            - link "Group F Netherlands Japan Sweden Tunisia" [ref=e92] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e93]:
+                - generic [ref=e94]: Group F
+                - generic [ref=e95]:
+                  - img "Netherlands" [ref=e96]
+                  - img "Japan" [ref=e97]
+                  - img "Sweden" [ref=e98]
+                  - img "Tunisia" [ref=e99]
+            - link "Group G Belgium Egypt Iran New Zealand" [ref=e102] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e103]:
+                - generic [ref=e104]: Group G
+                - generic [ref=e105]:
+                  - img "Belgium" [ref=e106]
+                  - img "Egypt" [ref=e107]
+                  - img "Iran" [ref=e108]
+                  - img "New Zealand" [ref=e109]
+            - link "Group H Spain Cabo Verde Saudi Arabia Uruguay" [ref=e112] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e113]:
+                - generic [ref=e114]: Group H
+                - generic [ref=e115]:
+                  - img "Spain" [ref=e116]
+                  - img "Cabo Verde" [ref=e117]
+                  - img "Saudi Arabia" [ref=e118]
+                  - img "Uruguay" [ref=e119]
+            - link "Group I France Senegal Iraq Norway" [ref=e122] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e123]:
+                - generic [ref=e124]: Group I
+                - generic [ref=e125]:
+                  - img "France" [ref=e126]
+                  - img "Senegal" [ref=e127]
+                  - img "Iraq" [ref=e128]
+                  - img "Norway" [ref=e129]
+            - link "Group J Argentina Algeria Austria Jordan" [ref=e132] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e133]:
+                - generic [ref=e134]: Group J
+                - generic [ref=e135]:
+                  - img "Argentina" [ref=e136]
+                  - img "Algeria" [ref=e137]
+                  - img "Austria" [ref=e138]
+                  - img "Jordan" [ref=e139]
+            - link "Group K Portugal DR Congo Uzbekistan Colombia" [ref=e142] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e143]:
+                - generic [ref=e144]: Group K
+                - generic [ref=e145]:
+                  - img "Portugal" [ref=e146]
+                  - img "DR Congo" [ref=e147]
+                  - img "Uzbekistan" [ref=e148]
+                  - img "Colombia" [ref=e149]
+            - link "Group L England Croatia Ghana Panama" [ref=e152] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e153]:
+                - generic [ref=e154]: Group L
+                - generic [ref=e155]:
+                  - img "England" [ref=e156]
+                  - img "Croatia" [ref=e157]
+                  - img "Ghana" [ref=e158]
+                  - img "Panama" [ref=e159]
+            - link "Group Iran Austria South Korea Australia Côte d'Ivoire Sweden Uzbekistan Qatar Iraq Saudi Arabia Ghana Haiti" [ref=e162] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e163]:
+                - generic [ref=e164]: Group
+                - generic [ref=e165]:
+                  - img "Iran" [ref=e166]
+                  - img "Austria" [ref=e167]
+                  - img "South Korea" [ref=e168]
+                  - img "Australia" [ref=e169]
+                  - img "Côte d'Ivoire" [ref=e170]
+                  - img "Sweden" [ref=e171]
+                  - img "Uzbekistan" [ref=e172]
+                  - img "Qatar" [ref=e173]
+                  - img "Iraq" [ref=e174]
+                  - img "Saudi Arabia" [ref=e175]
+                  - img "Ghana" [ref=e176]
+                  - img "Haiti" [ref=e177]
+            - link "Group A Mexico South Africa South Korea Czechia" [ref=e180] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e181]:
+                - generic [ref=e182]: Group A
+                - generic [ref=e183]:
+                  - img "Mexico" [ref=e184]
+                  - img "South Africa" [ref=e185]
+                  - img "South Korea" [ref=e186]
+                  - img "Czechia" [ref=e187]
+            - link "Group B Canada Bosnia & Herzegovina Qatar Switzerland" [ref=e190] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e191]:
+                - generic [ref=e192]: Group B
+                - generic [ref=e193]:
+                  - img "Canada" [ref=e194]
+                  - img "Bosnia & Herzegovina" [ref=e195]
+                  - img "Qatar" [ref=e196]
+                  - img "Switzerland" [ref=e197]
+            - link "Group C Brazil Morocco Haiti Scotland" [ref=e200] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e201]:
+                - generic [ref=e202]: Group C
+                - generic [ref=e203]:
+                  - img "Brazil" [ref=e204]
+                  - img "Morocco" [ref=e205]
+                  - img "Haiti" [ref=e206]
+                  - img "Scotland" [ref=e207]
+            - link "Group D USA Paraguay Australia Türkiye" [ref=e210] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e211]:
+                - generic [ref=e212]: Group D
+                - generic [ref=e213]:
+                  - img "USA" [ref=e214]
+                  - img "Paraguay" [ref=e215]
+                  - img "Australia" [ref=e216]
+                  - img "Türkiye" [ref=e217]
+            - link "Group E Germany Curaçao Côte d'Ivoire Ecuador" [ref=e220] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e221]:
+                - generic [ref=e222]: Group E
+                - generic [ref=e223]:
+                  - img "Germany" [ref=e224]
+                  - img "Curaçao" [ref=e225]
+                  - img "Côte d'Ivoire" [ref=e226]
+                  - img "Ecuador" [ref=e227]
+            - link "Group F Netherlands Japan Sweden Tunisia" [ref=e230] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e231]:
+                - generic [ref=e232]: Group F
+                - generic [ref=e233]:
+                  - img "Netherlands" [ref=e234]
+                  - img "Japan" [ref=e235]
+                  - img "Sweden" [ref=e236]
+                  - img "Tunisia" [ref=e237]
+            - link "Group G Belgium Egypt Iran New Zealand" [ref=e240] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e241]:
+                - generic [ref=e242]: Group G
+                - generic [ref=e243]:
+                  - img "Belgium" [ref=e244]
+                  - img "Egypt" [ref=e245]
+                  - img "Iran" [ref=e246]
+                  - img "New Zealand" [ref=e247]
+            - link "Group H Spain Cabo Verde Saudi Arabia Uruguay" [ref=e250] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e251]:
+                - generic [ref=e252]: Group H
+                - generic [ref=e253]:
+                  - img "Spain" [ref=e254]
+                  - img "Cabo Verde" [ref=e255]
+                  - img "Saudi Arabia" [ref=e256]
+                  - img "Uruguay" [ref=e257]
+            - link "Group I France Senegal Iraq Norway" [ref=e260] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e261]:
+                - generic [ref=e262]: Group I
+                - generic [ref=e263]:
+                  - img "France" [ref=e264]
+                  - img "Senegal" [ref=e265]
+                  - img "Iraq" [ref=e266]
+                  - img "Norway" [ref=e267]
+            - link "Group J Argentina Algeria Austria Jordan" [ref=e270] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e271]:
+                - generic [ref=e272]: Group J
+                - generic [ref=e273]:
+                  - img "Argentina" [ref=e274]
+                  - img "Algeria" [ref=e275]
+                  - img "Austria" [ref=e276]
+                  - img "Jordan" [ref=e277]
+            - link "Group K Portugal DR Congo Uzbekistan Colombia" [ref=e280] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e281]:
+                - generic [ref=e282]: Group K
+                - generic [ref=e283]:
+                  - img "Portugal" [ref=e284]
+                  - img "DR Congo" [ref=e285]
+                  - img "Uzbekistan" [ref=e286]
+                  - img "Colombia" [ref=e287]
+            - link "Group L England Croatia Ghana Panama" [ref=e290] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e291]:
+                - generic [ref=e292]: Group L
+                - generic [ref=e293]:
+                  - img "England" [ref=e294]
+                  - img "Croatia" [ref=e295]
+                  - img "Ghana" [ref=e296]
+                  - img "Panama" [ref=e297]
+            - link "Group Iran Austria South Korea Australia Côte d'Ivoire Sweden Uzbekistan Qatar Iraq Saudi Arabia Ghana Haiti" [ref=e300] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16#id:58210,tab:standings
+              - generic [ref=e301]:
+                - generic [ref=e302]: Group
+                - generic [ref=e303]:
+                  - img "Iran" [ref=e304]
+                  - img "Austria" [ref=e305]
+                  - img "South Korea" [ref=e306]
+                  - img "Australia" [ref=e307]
+                  - img "Côte d'Ivoire" [ref=e308]
+                  - img "Sweden" [ref=e309]
+                  - img "Uzbekistan" [ref=e310]
+                  - img "Qatar" [ref=e311]
+                  - img "Iraq" [ref=e312]
+                  - img "Saudi Arabia" [ref=e313]
+                  - img "Ghana" [ref=e314]
+                  - img "Haiti" [ref=e315]
+      - generic [ref=e316]:
+        - generic [ref=e318]:
+          - generic [ref=e320]:
+            - img "logo" [ref=e321]
+            - link "Sofascore live results" [ref=e322] [cursor=pointer]:
+              - /url: /
+          - generic [ref=e325]:
+            - img [ref=e326]
+            - textbox "Search matches, competitions, teams, players, and more" [ref=e328]
+          - generic [ref=e330]:
+            - iframe [ref=e338]:
+              - generic [ref=f16e4]:
+                - img [ref=f16e5] [cursor=pointer]
+                - generic [ref=f16e6]: "1"
+            - button "Sign in" [ref=e341] [cursor=pointer]:
+              - img [ref=e342]
+              - text: Sign in
+            - link [ref=e344] [cursor=pointer]:
+              - /url: /favorites
+              - button [ref=e347]:
+                - img [ref=e348]
+            - button [ref=e353] [cursor=pointer]:
+              - img [ref=e354]
+            - button [ref=e359] [cursor=pointer]:
+              - img [ref=e360]
+        - generic [ref=e363]:
+          - list [ref=e364]:
+            - listitem [ref=e365]:
+              - link "Trending" [ref=e366] [cursor=pointer]:
+                - /url: /trending
+                - img [ref=e368]
+                - img [ref=e372]
+                - generic [ref=e374]: Trending
+            - listitem [ref=e375]:
+              - link "WC26" [ref=e376] [cursor=pointer]:
+                - /url: /football/tournament/world/world-championship/16#id:58210
+                - generic [ref=e377]:
+                  - img [ref=e378]
+                  - generic [ref=e382]: WC26
+            - listitem [ref=e385]:
+              - link "Football" [ref=e386] [cursor=pointer]:
+                - /url: /
+                - generic [ref=e388]: Football
+            - listitem [ref=e391]:
+              - link "Basketball" [ref=e392] [cursor=pointer]:
+                - /url: /basketball
+                - generic [ref=e394]: Basketball
+            - listitem [ref=e397]:
+              - link "Tennis" [ref=e398] [cursor=pointer]:
+                - /url: /tennis
+                - generic [ref=e400]: Tennis
+            - listitem [ref=e403]:
+              - link "Ice hockey" [ref=e404] [cursor=pointer]:
+                - /url: /ice-hockey
+                - generic [ref=e406]: Ice hockey
+            - listitem [ref=e409]:
+              - link "Table tennis" [ref=e410] [cursor=pointer]:
+                - /url: /table-tennis
+                - generic [ref=e412]: Table tennis
+            - listitem [ref=e415]:
+              - link "Baseball" [ref=e416] [cursor=pointer]:
+                - /url: /baseball
+                - generic [ref=e418]: Baseball
+            - listitem [ref=e421]:
+              - link "Handball" [ref=e422] [cursor=pointer]:
+                - /url: /handball
+                - generic [ref=e424]: Handball
+            - listitem [ref=e427]:
+              - link "American football" [ref=e428] [cursor=pointer]:
+                - /url: /american-football
+                - generic [ref=e430]: American football
+            - listitem [ref=e433]:
+              - generic [ref=e434]:
+                - img [ref=e436]
+                - generic [ref=e438]: More
+          - generic [ref=e439]:
+            - link "News" [ref=e440] [cursor=pointer]:
+              - /url: /news
+              - button "News" [ref=e441]:
+                - img [ref=e442]
+                - text: News
+            - button "Fantasy" [ref=e447] [cursor=pointer]:
+              - img [ref=e448]
+              - text: Fantasy
+            - link "Torneo" [ref=e451] [cursor=pointer]:
+              - /url: https://torneo.sofascore.com/
+              - button "Torneo" [ref=e452]:
+                - img [ref=e453]
+                - text: Torneo
+    - main [ref=e456]:
+      - generic [ref=e459]:
+        - generic [ref=e460]:
+          - generic [ref=e463]: Advertisement
+          - list [ref=e468]:
+            - listitem [ref=e469]:
+              - link "Football" [ref=e470] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e471]:
+              - link "Europe" [ref=e472] [cursor=pointer]:
+                - /url: /football/europe
+            - listitem [ref=e473]:
+              - heading "UEFA Champions League standings, fixtures, results and stats" [level=1] [ref=e474]
+          - generic [ref=e475]:
+            - generic [ref=e477]:
+              - generic [ref=e479]:
+                - img "UEFA Champions League" [ref=e482]
+                - generic [ref=e483]:
+                  - generic [ref=e484]:
+                    - heading "UEFA Champions League" [level=2] [ref=e485]
+                    - generic [ref=e487]: 1.3M followers
+                  - generic [ref=e488]:
+                    - generic [ref=e489]:
+                      - img "Europe" [ref=e490]
+                      - generic [ref=e491]: Europe
+                    - generic [ref=e494]:
+                      - generic [ref=e495]: Select season in unique tournament header
+                      - combobox "Select season in unique tournament header" [ref=e496] [cursor=pointer]:
+                        - generic [ref=e497]: 25/26
+                        - img [ref=e499]
+              - button "Favourite" [ref=e505] [cursor=pointer]:
+                - img [ref=e506]
+                - generic [ref=e509]: Favourite
+              - generic [ref=e511]:
+                - progressbar "Tournament is 100% complete" [ref=e514]
+                - generic [ref=e517]:
+                  - generic [ref=e518]: 7 Jul
+                  - generic [ref=e519]: 29 May
+            - generic [ref=e520]:
+              - generic [ref=e521]:
+                - generic [ref=e522]:
+                  - generic [ref=e525]: Matches
+                  - generic [ref=e527]:
+                    - button [disabled] [ref=e528]:
+                      - img [ref=e529]
+                    - button [disabled] [ref=e531]:
+                      - img [ref=e532]
+                  - generic [ref=e538]:
+                    - img [ref=e540]
+                    - generic [ref=e595]: No events
+                    - generic [ref=e596]: There are no available events.
+                - generic [ref=e600]: Advertisement
+              - generic [ref=e604]:
+                - generic [ref=e607]:
+                  - scrollbar [ref=e609]:
+                    - tablist [ref=e613]:
+                      - tab "Standings" [selected] [ref=e614] [cursor=pointer]:
+                        - link "Standings" [ref=e615]:
+                          - /url: "#tab:standings"
+                          - heading "Standings" [level=2] [ref=e616]
+                      - tab "Details" [ref=e617] [cursor=pointer]:
+                        - link "Details" [ref=e618]:
+                          - /url: "#tab:details"
+                          - heading "Details" [level=2] [ref=e619]
+                  - generic:
+                    - tabpanel
+                - generic [ref=e620]:
+                  - generic [ref=e623]: About
+                  - generic [ref=e626]:
+                    - paragraph [ref=e627]: UEFA Champions League, also known as European Cup, is a professional football league for men.
+                    - paragraph [ref=e628]: The current holder of the title is Paris Saint-Germain and the team that holds the most titles is Real Madrid.
+                    - paragraph [ref=e629]: Sofascore tracks live football scores and UEFA Champions League table, results, statistics and top scorers.
+                    - heading "Competition format of UEFA Champions League" [level=2] [ref=e630]
+                    - paragraph [ref=e631]: The competition features a 36-team league table where each team plays 8 matches against different opponents, with 4 games at home and 4 away. The top 8 teams in the league advance directly to the Round of 16 in the knockout stage.
+                    - paragraph [ref=e632]: Teams ranked 9th to 24th enter a play-off round, where the highest-ranked team faces the lowest-ranked in a two-legged tie, while teams finishing 25th to 36th are eliminated from the competition.
+                    - paragraph [ref=e633]: After the league and play-off stages, the tournament moves to the knockout phase, featuring two-legged ties, except for the final, which is a single match.
+                    - heading "UEFA Champions League top scorers" [level=2] [ref=e634]
+                    - paragraph [ref=e635]: The top scorers in the last season of UEFA Champions League UEFA Champions League 25/26 season were Kylian Mbappé.Last season top scorer is Kylian Mbappé with 15 goals.
+                    - heading "Team stadiums and attendance" [level=2] [ref=e636]
+                    - paragraph [ref=e637]: The team with the largest stadium is Barcelona with the capacity of 99354.
+                    - heading "TV partners" [level=2] [ref=e638]
+                    - heading "Which team in UEFA Champions League has the most titles?" [level=3] [ref=e639]
+                    - paragraph [ref=e640]: The team with the most titles in UEFA Champions League is Real Madrid.
+                    - heading "Who won the first UEFA Champions League?" [level=3] [ref=e641]
+                    - paragraph [ref=e642]: Real Madrid won the first UEFA Champions League.
+                    - heading "Which team is the current titleholder in UEFA Champions League?" [level=3] [ref=e643]
+                    - paragraph [ref=e644]: The current titleholder in UEFA Champions League is Paris Saint-Germain.
+                    - heading "How many goals were scored on average in UEFA Champions League 25/26?" [level=3] [ref=e645]
+                    - paragraph [ref=e646]: The average number of goals in UEFA Champions League 25/26 was 3.18.
+                    - heading "When does the UEFA Champions League start and when does it finish?" [level=3] [ref=e647]
+                    - paragraph [ref=e648]: The UEFA Champions League usually starts in July and ends in May.
+        - generic [ref=e650]:
+          - generic [ref=e651]: Advertisement
+          - img [ref=e655] [cursor=pointer]
+    - generic [ref=e659] [cursor=pointer]:
+      - button "Close slide-in banner" [ref=e661]:
+        - img [ref=e662]
+      - generic [ref=e664]: Download the app
+      - img [ref=e665]
+    - generic [ref=e668]:
+      - generic [ref=e670]:
+        - generic [ref=e671]:
+          - generic [ref=e672]:
+            - generic [ref=e673]: About
+            - generic [ref=e674]: "Football live scores on Sofascore livescore has live coverage from more than 500 worldwide soccer leagues, cups and tournaments with live updated results, statistics, league tables, video highlights, and fixtures. Live matches from all football leagues have fast and accurate updates for minutes, scores, halftime and full time soccer results, goal scorers and assistants, cards, substitutions, and match statistics. Video highlights are available for most popular football leagues: Spain La Liga BBVA league and Copa del Rey , Italy Serie and Coppa Italia, German Bundesliga and DFB pokal, France Ligue 1 and UEFA Champions League, Europa league and International tournaments like World Championship, European Championship. Sofascore live score has details for each team where you can see last 10 soccer matches, tables, fixtures, results, statistics and much more. In match details you can find dropping/rising odds. Also, all scores on Sofascore.com livescore are automatically updated and you don't need to refresh it manually. With adding football matches or teams you want to follow in favorites, following your matches or teams livescores, results and statistics will be even more simple. There is an option to select All or Live football matches."
+          - generic [ref=e676]: The latest stories
+        - generic [ref=e678]:
+          - generic [ref=e679]:
+            - generic [ref=e680]: Football
+            - link "FIFA World Cup" [ref=e681] [cursor=pointer]:
+              - /url: /football/tournament/world/world-championship/16
+            - link "FIFA Rankings" [ref=e682] [cursor=pointer]:
+              - /url: /football/rankings/fifa
+            - link "UEFA Champions League" [ref=e683] [cursor=pointer]:
+              - /url: /football/tournament/europe/uefa-champions-league/7
+            - link "Serie A" [ref=e684] [cursor=pointer]:
+              - /url: /football/tournament/italy/serie-a/23
+            - link "LaLiga" [ref=e685] [cursor=pointer]:
+              - /url: /football/tournament/spain/laliga/8
+            - link "Premier League" [ref=e686] [cursor=pointer]:
+              - /url: /football/tournament/england/premier-league/17
+            - link "Bundesliga" [ref=e687] [cursor=pointer]:
+              - /url: /football/tournament/germany/bundesliga/35
+            - link "UEFA Rankings" [ref=e688] [cursor=pointer]:
+              - /url: /football/rankings/uefa
+          - generic [ref=e689]:
+            - generic [ref=e690]: Basketball
+            - link "NBA" [ref=e691] [cursor=pointer]:
+              - /url: /basketball/tournament/usa/nba/132
+            - link "Euroleague" [ref=e692] [cursor=pointer]:
+              - /url: /basketball/tournament/international/euroleague/138
+            - link "Stoiximan GBL" [ref=e693] [cursor=pointer]:
+              - /url: /basketball/tournament/greece/stoiximan-basket-league/304
+            - link "Liga ACB" [ref=e694] [cursor=pointer]:
+              - /url: /basketball/tournament/spain/liga-acb/264
+            - link "Lega A Basket" [ref=e695] [cursor=pointer]:
+              - /url: /basketball/tournament/italy/serie-a/262
+            - link "Turkish Basketball Super League" [ref=e696] [cursor=pointer]:
+              - /url: /basketball/tournament/turkey/turkiye-sigorta-basketbol-super-ligi/519
+          - generic [ref=e697]:
+            - generic [ref=e698]: Tennis
+            - link "Wimbledon" [ref=e699] [cursor=pointer]:
+              - /url: /tennis/tournament/atp/wimbledon/2361
+            - link "ATP Rankings" [ref=e700] [cursor=pointer]:
+              - /url: /tennis/rankings/atp
+            - link "WTA Rankings" [ref=e701] [cursor=pointer]:
+              - /url: /tennis/rankings/wta
+            - link "US Open" [ref=e702] [cursor=pointer]:
+              - /url: /tennis/tournament/atp/us-open/2449
+            - link "ATP" [ref=e703] [cursor=pointer]:
+              - /url: /tennis/atp
+            - link "Roland Garros" [ref=e704] [cursor=pointer]:
+              - /url: /tennis/tournament/atp/roland-garros/2480
+            - link "Australian Open" [ref=e705] [cursor=pointer]:
+              - /url: /tennis/tournament/atp/australian-open/2363
+          - generic [ref=e706]:
+            - generic [ref=e707]: Trending
+            - link "MLB" [ref=e708] [cursor=pointer]:
+              - /url: /baseball/tournament/usa/mlb/11205
+            - link "NHL" [ref=e709] [cursor=pointer]:
+              - /url: /ice-hockey/tournament/usa/nhl/234
+            - link "Grand Prix de France" [ref=e710] [cursor=pointer]:
+              - /url: /motorsport/race/grand-prix-de-france/224752
+            - link "Rally de Portugal" [ref=e711] [cursor=pointer]:
+              - /url: /motorsport/race/rally-de-portugal/219098
+            - link "UFC" [ref=e712] [cursor=pointer]:
+              - /url: /mma/tournament/world/ufc/19906
+            - link "EHF Champions League" [ref=e713] [cursor=pointer]:
+              - /url: /handball/tournament/international/ehf-champions-league/30
+            - link "ESL Challenger League" [ref=e714] [cursor=pointer]:
+              - /url: /esports/tournament/csgo/esl-challenger-league/18501
+          - generic [ref=e715]:
+            - generic [ref=e716]: Football Scores
+            - link "Mexico - South Africa" [ref=e717] [cursor=pointer]:
+              - /url: /football/match/mexico-south-africa/LUbsGVb#id:15186710
+            - link "South Korea - Czechia" [ref=e718] [cursor=pointer]:
+              - /url: /football/match/south-korea-czechia/oUbsKUb#id:15186720
+            - link "Canada - BiH" [ref=e719] [cursor=pointer]:
+              - /url: /football/match/canada-bosnia-and-herzegovina/EObscVb#id:15186836
+            - link "USA - Paraguay" [ref=e720] [cursor=pointer]:
+              - /url: /football/match/paraguay-usa/zUbsOVb#id:15186873
+            - link "Qatar - Switzerland" [ref=e721] [cursor=pointer]:
+              - /url: /football/match/qatar-switzerland/ZTbsRVb#id:15186526
+            - link "Brazil - Morocco" [ref=e722] [cursor=pointer]:
+              - /url: /football/match/morocco-brazil/YUbsDVb#id:15186850
+            - link "Haiti - Scotland" [ref=e723] [cursor=pointer]:
+              - /url: /football/match/haiti-scotland/VTbsEUc#id:15186853
+            - link "Australia - Türkiye" [ref=e724] [cursor=pointer]:
+              - /url: /football/match/australia-turkiye/aUbsQUb#id:15186874
+          - generic [ref=e725]:
+            - generic [ref=e726]: Basketball Scores
+            - link "Knicks - Spurs" [ref=e727] [cursor=pointer]:
+              - /url: /basketball/match/san-antonio-spurs-new-york-knicks/wtbsEtb#id:15935069
+            - link "Knicks - Spurs" [ref=e728] [cursor=pointer]:
+              - /url: /basketball/match/san-antonio-spurs-new-york-knicks/wtbsEtb#id:15935071
+            - link "Olympiacos - Panathinaikos" [ref=e729] [cursor=pointer]:
+              - /url: /basketball/match/panathinaikos-bc-olympiacos-bc/bvbsivb#id:16263463
+            - link "Panathinaikos - Olympiacos" [ref=e730] [cursor=pointer]:
+              - /url: /basketball/match/panathinaikos-bc-olympiacos-bc/bvbsivb#id:16283914
+            - link "Partizan Mozzart - BC Dubai" [ref=e731] [cursor=pointer]:
+              - /url: /basketball/match/bc-dubai-kk-partizan-mozzart-bet/MHcspyke#id:16250359
+            - link "Barça - La Laguna Tenerife" [ref=e732] [cursor=pointer]:
+              - /url: /basketball/match/la-laguna-tenerife-barca-basket/TvbsTkG#id:16288797
+            - link "Barça - La Laguna Tenerife" [ref=e733] [cursor=pointer]:
+              - /url: /basketball/match/la-laguna-tenerife-barca-basket/TvbsTkG#id:16288799
+            - link "La Laguna Tenerife - Barça" [ref=e734] [cursor=pointer]:
+              - /url: /basketball/match/la-laguna-tenerife-barca-basket/TvbsTkG#id:16288798
+      - generic [ref=e737]:
+        - generic [ref=e738]:
+          - img [ref=e739]
+          - generic [ref=e741]:
+            - link "Download Sofascore" [ref=e742] [cursor=pointer]:
+              - /url: https://app.sofascore.com/eAnU/owzhv581?deep_link_value=https%3A%2F%2Fwww.sofascore.com%2Fleague%2F7
+              - img [ref=e743]
+            - link "Download Sofascore" [ref=e751] [cursor=pointer]:
+              - /url: https://app.sofascore.com/L1k1/yxdg6mhl?deep_link_value=https%3A%2F%2Fwww.sofascore.com%2Fleague%2F7
+              - img [ref=e752]
+        - generic [ref=e758]:
+          - link "Advertise" [ref=e759] [cursor=pointer]:
+            - /url: https://corporate.sofascore.com/advertising/
+          - link "Contact" [ref=e760] [cursor=pointer]:
+            - /url: https://corporate.sofascore.com/contact
+          - link "Torneo by Sofascore" [ref=e761] [cursor=pointer]:
+            - /url: https://torneo.sofascore.com/
+          - link "Sofascore News" [ref=e762] [cursor=pointer]:
+            - /url: https://www.sofascore.com/news/
+        - generic [ref=e764]:
+          - link "Sofascore Facebook page" [ref=e765] [cursor=pointer]:
+            - /url: https://www.facebook.com/Sofascore
+            - img [ref=e766]
+          - link "Sofascore Twitter" [ref=e769] [cursor=pointer]:
+            - /url: https://x.com/Sofascore
+            - img [ref=e770]
+          - link "Sofascore Instagram" [ref=e772] [cursor=pointer]:
+            - /url: https://instagram.com/sofascore_football/
+            - img [ref=e773]
+          - link "Sofascore TikTok" [ref=e775] [cursor=pointer]:
+            - /url: https://www.tiktok.com/@sofascore_football
+            - img [ref=e776]
+      - generic [ref=e780]:
+        - img [ref=e781]
+        - text: When the fun stops, STOP
+      - generic [ref=e785]:
+        - generic [ref=e786]: © 2026Sofascore – All rights reserved.
+        - generic [ref=e788]:
+          - link "Privacy Policy" [ref=e789] [cursor=pointer]:
+            - /url: /privacy-policy
+          - link "Cookie Policy" [ref=e790] [cursor=pointer]:
+            - /url: /cookies-policy
+          - link "Accessibility Policy" [ref=e791] [cursor=pointer]:
+            - /url: /accessibility
+          - link "Terms & Conditions" [ref=e792] [cursor=pointer]:
+            - /url: /terms-and-conditions
+          - link "GDPR & Journalism" [ref=e793] [cursor=pointer]:
+            - /url: /gdpr-and-journalism
+          - link "Impressum" [ref=e794] [cursor=pointer]:
+            - /url: /impressum
+  - alert [ref=e795]
