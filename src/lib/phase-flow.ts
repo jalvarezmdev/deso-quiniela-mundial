@@ -121,5 +121,6 @@ export function getActivePhase(state: AppState, now: Date): PhaseKey {
     }
   }
 
-  return 'groups'
+  // All phases locked — the tournament is over, return the last phase
+  return PHASE_ORDER[PHASE_ORDER.length - 1] ?? 'groups'
 }
