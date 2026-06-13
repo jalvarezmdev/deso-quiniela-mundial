@@ -92,18 +92,6 @@ export function ResultadosMatchCard({
           />
         </>
       )}
-
-      {match.status === 'scheduled' && canPredict && onPredict && (
-        <div className="mt-3 flex justify-end">
-          <button
-            type="button"
-            onClick={onPredict}
-            className="rounded-lg border border-[var(--accent)]/60 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)] transition hover:bg-[var(--accent)]/20"
-          >
-            Cargar
-          </button>
-        </div>
-      )}
     </Card>
   )
 }
