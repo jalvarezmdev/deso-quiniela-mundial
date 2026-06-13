@@ -74,7 +74,7 @@ export function ResultadosMatchCard({
         </div>
       </div>
 
-      {match.status === 'final' && (
+      {['live', 'final'].includes(match.status) && (
         <>
           <div className="mt-3 flex justify-end">
             <button
