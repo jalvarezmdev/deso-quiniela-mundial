@@ -31,6 +31,8 @@ export type PublicQuinielasAction =
   | 'list_matches'
   | 'get_phase_window_override'
   | 'list_phase_window_overrides'
+  | 'get_scoring_config'
+  | 'get_forced_active_phase'
 
 export type AuthenticatedQuinielasAction =
   | 'create_prediction'
@@ -44,6 +46,7 @@ export type AuthenticatedQuinielasAction =
   | 'delete_phase_submission'
   | 'list_leaderboard'
   | 'list_my_match_points'
+  | 'list_predictions_for_match'
 
 export type AdminQuinielasAction =
   | 'create_match'
@@ -54,6 +57,7 @@ export type AdminQuinielasAction =
   | 'delete_phase_window_override'
   | 'get_scoring_config'
   | 'update_scoring_config'
+  | 'update_forced_active_phase'
 
 export type MatchDTO = Match & {
   updatedAt?: string
@@ -63,6 +67,16 @@ export type PredictionDTO = Prediction
 export type PhaseSubmissionDTO = PhaseSubmission
 export type PhaseWindowOverrideDTO = PhaseWindowOverride
 export type LeaderboardRowDTO = LeaderboardRow
+
+export type PredictionForMatchDTO = {
+  nickname: string
+  homeGoals: number
+  awayGoals: number
+}
+
+export type ListPredictionsForMatchResultDTO = {
+  predictions: PredictionForMatchDTO[]
+}
 
 export type ListMatchesInput = {
   phase?: PhaseKey

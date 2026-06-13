@@ -34,7 +34,7 @@ export async function handleListLeaderboard(
       .from('matches')
       .select('*')
       .is('deleted_at', null)
-      .eq('status', 'final'),
+      .in('status', ['final', 'live']),
     ctx.supabase
       .from('predictions')
       .select('*'),

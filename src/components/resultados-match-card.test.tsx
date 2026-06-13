@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ResultadosMatchCard } from './resultados-match-card'
 import type { Match, Team } from '#/lib/types'
+
+vi.mock('#/components/match-predictions-dialog', () => ({
+  MatchPredictionsDialog: () => null,
+}))
 
 const home: Team = { id: 'arg', name: 'Argentina', flag: '🇦🇷' }
 const away: Team = { id: 'bra', name: 'Brasil', flag: '🇧🇷' }
@@ -58,19 +62,6 @@ describe('ResultadosMatchCard', () => {
     expect(screen.getAllByText('-')).toHaveLength(2)
   })
 
-  it('shows manual chip only when manual override is true', () => {
-    const autoMatch = createMatch({ manualOverride: false })
-    const manualMatch = createMatch({ id: 'm-2', manualOverride: true })
-
-    const { rerender } = render(
-      <ResultadosMatchCard match={autoMatch} home={home} away={away} phaseLabel="Fase de Grupos" />,
-    )
-    expect(screen.queryByText('MANUAL')).toBeNull()
-
-    rerender(<ResultadosMatchCard match={manualMatch} home={home} away={away} phaseLabel="Fase de Grupos" />)
-    expect(screen.getByText('MANUAL')).toBeTruthy()
-  })
-
   it('adds live highlight styles when requested', () => {
     const match = createMatch({ status: 'live' })
     const { container } = render(
@@ -85,5 +76,17 @@ describe('ResultadosMatchCard', () => {
 
     const card = container.firstElementChild
     expect(card?.className.includes('ring-lime-400/30')).toBe(true)
+  })
+
+  it('shows Ver Resultados button only when match status is final', () => {
+    const scheduled = createMatch({ status: 'scheduled' })
+    const { rerender } = render(
+      <ResultadosMatchCard match={scheduled} home={home} away={away} phaseLabel="Fase de Grupos" />,
+    )
+    expect(screen.queryByText('Ver Resultados')).toBeNull()
+
+    const final = createMatch({ status: 'final' })
+    rerender(<ResultadosMatchCard match={final} home={home} away={away} phaseLabel="Fase de Grupos" />)
+    expect(screen.getByText('Ver Resultados')).toBeTruthy()
   })
 })

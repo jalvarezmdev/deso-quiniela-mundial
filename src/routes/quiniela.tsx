@@ -42,6 +42,7 @@ import {
   buildKnockoutMatchViews,
   type QuinielaMatchView,
 } from "#/lib/elimination-preview";
+import { canPredictMatch } from "#/lib/match-lock";
 
 export const Route = createFileRoute("/quiniela")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -214,10 +215,18 @@ function QuinielaPage() {
 
   const visibleFlowMatches = useMemo(
     () =>
-      visibleRoundGroups.flatMap((roundGroup) =>
-        roundGroup.groups.flatMap((group) => group.matches),
-      ),
-    [visibleRoundGroups],
+      visibleRoundGroups
+        .flatMap((roundGroup) =>
+          roundGroup.groups.flatMap((group) => group.matches),
+        )
+        .filter((match) =>
+          canPredictMatch(
+            match,
+            Boolean(currentUser?.isAdmin),
+            isPhaseConfirmed(displayedPhase),
+          ),
+        ),
+    [visibleRoundGroups, currentUser?.isAdmin, isPhaseConfirmed, displayedPhase],
   );
 
   const currentUserPhasePredictions = useMemo(
@@ -241,10 +250,14 @@ function QuinielaPage() {
   );
 
   const editable = canEditPhase(displayedPhase);
+  const hasNotConfirmed = !isPhaseConfirmed(displayedPhase) || Boolean(currentUser?.isAdmin);
+  const confirmablePhaseMatches = currentUser?.isAdmin
+    ? matches
+    : matches.filter(m => m.status === 'scheduled');
   const { savedMatchesCount, totalMatchesCount, missingPredictionCount, canConfirmPhase } =
     getPhaseConfirmationState({
-      editable,
-      phaseMatches: matches,
+      editable: hasNotConfirmed,
+      phaseMatches: confirmablePhaseMatches,
       phasePredictions: currentUserPhasePredictions,
       missingFixtureCount: knockoutViews.missingCount,
     });
@@ -320,6 +333,24 @@ function QuinielaPage() {
   }
 
   async function onConfirmPhase() {
+    const missingMatches = confirmablePhaseMatches.filter(
+      (match) => !predictionByMatchId.has(match.id),
+    );
+
+    if (missingMatches.length > 0) {
+      for (const match of missingMatches) {
+        const result = await saveMatchPrediction(match, {
+          homeGoals: 0,
+          awayGoals: 0,
+          predictedQualifiedTeamId: null,
+        });
+        if (!result.ok) {
+          toast.error(result.message);
+          return;
+        }
+      }
+    }
+
     const result = await confirmPhase(displayedPhase);
     if (!result.ok) {
       toast.error(result.message);
@@ -361,7 +392,16 @@ function QuinielaPage() {
                 </Badge>
               )}
               {prediction && isPhaseConfirmed(displayedPhase) ? null : (
-                <Button onClick={() => openModal(match)} disabled={!editable}>
+                <Button
+                  onClick={() => openModal(match)}
+                  disabled={
+                    !canPredictMatch(
+                      match,
+                      Boolean(currentUser?.isAdmin),
+                      isPhaseConfirmed(displayedPhase),
+                    )
+                  }
+                >
                   {prediction ? "Actualizar" : "Cargar"}
                 </Button>
               )}
@@ -416,7 +456,16 @@ function QuinielaPage() {
           )}
 
           {prediction && isPhaseConfirmed(displayedPhase) ? null : (
-            <Button onClick={() => openModal(match)} disabled={!editable}>
+            <Button
+              onClick={() => openModal(match)}
+              disabled={
+                !canPredictMatch(
+                  match,
+                  Boolean(currentUser?.isAdmin),
+                  isPhaseConfirmed(displayedPhase),
+                )
+              }
+            >
               {prediction ? "Actualizar" : "Cargar"}
             </Button>
           )}

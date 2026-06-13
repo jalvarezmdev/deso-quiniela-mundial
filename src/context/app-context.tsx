@@ -255,6 +255,9 @@ type AppContextValue = {
   scoringMode: 'phase_confirmation' | 'per_match'
   getScoringConfig: () => Promise<ActionResult>
   updateScoringConfig: (mode: 'phase_confirmation' | 'per_match') => Promise<ActionResult>
+  forcedActivePhase: PhaseKey | null
+  getForcedActivePhase: () => Promise<ActionResult>
+  updateForcedActivePhase: (phase: PhaseKey | null) => Promise<ActionResult>
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -267,6 +270,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([])
   const [scoringMode, setScoringMode] = useState<'phase_confirmation' | 'per_match'>('phase_confirmation')
+  const [forcedActivePhase, setForcedActivePhase] = useState<PhaseKey | null>(null)
 
   const syncSignedUser = useCallback((updatedUser: SessionUserDTO) => {
     const updated = mapSessionUser(updatedUser)
@@ -443,6 +447,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       await refreshMatches()
 
+      if (cancelled) return
+
+      const forcedPhaseResponse = await invokeQuinielasAction<Record<string, never>, { forcedActivePhase: PhaseKey | null }>(
+        'get_forced_active_phase',
+        {},
+      )
+      if (!cancelled && forcedPhaseResponse.ok) {
+        setForcedActivePhase(forcedPhaseResponse.data.forcedActivePhase)
+      }
+
       if (!cancelled) {
         setReady(true)
       }
@@ -461,9 +475,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [ready, sessionToken])
 
   const activePhase = useMemo(() => {
+    if (forcedActivePhase) return forcedActivePhase
     const now = ready ? new Date() : new Date(HYDRATION_SAFE_NOW_ISO)
     return getActivePhase(state, now)
-  }, [ready, state])
+  }, [ready, state, forcedActivePhase])
 
   const teamsById = useMemo(() => {
     const output: Record<string, string> = {}
@@ -630,98 +645,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     return isPhaseEditableAtNow(phase)
   }, [ready, currentUser, activePhase, state.submissions, isPhaseEditableAtNow])
-
-  const savePrediction = useCallback(async (payload: SavePredictionInput): Promise<ActionResult> => {
-    if (!currentUser) {
-      return { ok: false as const, message: 'Debes iniciar sesion.' }
-    }
-
-    if (!sessionToken) {
-      return { ok: false as const, message: 'Sesion invalida. Inicia sesion de nuevo.' }
-    }
-
-    if (!canEditPhase(payload.phase)) {
-      return { ok: false as const, message: 'No puedes editar esa fase ahora.' }
-    }
-
-    const hasPrediction = hasLocalPrediction(state.predictions, {
-      userId: currentUser.id,
-      phase: payload.phase,
-      matchId: payload.matchId,
-    })
-    const response = await savePredictionWithFallback(
-      (action, input) =>
-        invokeAuthenticatedQuinielasAction<SavePredictionInput, { prediction: PredictionDTO }>(
-          action,
-          sessionToken,
-          input,
-        ),
-      payload,
-      hasPrediction,
-    )
-
-    if (!response.ok) {
-      return { ok: false, message: response.error.message }
-    }
-
-    const updatedPrediction = mapPredictionDTO(response.data.prediction)
-    setState((prev) => {
-      const nextPredictions = [...prev.predictions]
-      const existingIndex = nextPredictions.findIndex(
-        (item) =>
-          item.userId === currentUser.id &&
-          item.phase === payload.phase &&
-          item.matchId === payload.matchId,
-      )
-
-      if (existingIndex >= 0) {
-        nextPredictions[existingIndex] = updatedPrediction
-      } else {
-        nextPredictions.push(updatedPrediction)
-      }
-
-      return {
-        ...prev,
-        predictions: nextPredictions,
-      }
-    })
-
-    return { ok: true }
-  }, [canEditPhase, currentUser, sessionToken, state.predictions])
-
-  const confirmPhase = useCallback(async (phase: PhaseKey): Promise<ActionResult> => {
-    if (!currentUser) {
-      return { ok: false as const, message: 'Debes iniciar sesion.' }
-    }
-
-    if (!sessionToken) {
-      return { ok: false as const, message: 'Sesion invalida. Inicia sesion de nuevo.' }
-    }
-
-    if (!canEditPhase(phase)) {
-      return { ok: false as const, message: 'Esta fase ya no se puede confirmar.' }
-    }
-
-    const response = await invokeAuthenticatedQuinielasAction<
-      { phase: PhaseKey },
-      { submission: PhaseSubmissionDTO }
-    >('create_phase_submission', sessionToken, { phase })
-
-    if (!response.ok) {
-      return { ok: false, message: response.error.message }
-    }
-
-    const submission = mapSubmissionDTO(response.data.submission)
-
-    setState((prev) => ({
-      ...prev,
-      submissions: [...prev.submissions.filter((item) => !(item.userId === submission.userId && item.phase === submission.phase)), submission],
-    }))
-
-    await refreshLeaderboard()
-
-    return { ok: true }
-  }, [canEditPhase, currentUser, refreshLeaderboard, sessionToken])
 
   const refreshLive = useCallback(() => {
     void refreshMatches()
@@ -973,10 +896,157 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { ok: true }
   }, [currentUser?.isAdmin, sessionToken])
 
+  const getForcedActivePhase = useCallback(async (): Promise<ActionResult> => {
+    if (!currentUser?.isAdmin) {
+      return { ok: false, message: 'Solo admin puede ver configuracion.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    const response = await invokeQuinielasAction<Record<string, never>, { forcedActivePhase: PhaseKey | null }>(
+      'get_forced_active_phase',
+      {},
+    )
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    setForcedActivePhase(response.data.forcedActivePhase)
+    return { ok: true }
+  }, [currentUser?.isAdmin, sessionToken])
+
+  const updateForcedActivePhase = useCallback(async (phase: PhaseKey | null): Promise<ActionResult> => {
+    if (!currentUser?.isAdmin) {
+      return { ok: false, message: 'Solo admin puede actualizar configuracion.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    const response = await invokeAdminQuinielasAction<{ forcedActivePhase: PhaseKey | null }, { forcedActivePhase: PhaseKey | null }>(
+      'update_forced_active_phase',
+      sessionToken,
+      { forcedActivePhase: phase },
+    )
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    setForcedActivePhase(response.data.forcedActivePhase)
+    return { ok: true }
+  }, [currentUser?.isAdmin, sessionToken])
+
   const isPhaseConfirmed = useCallback((phase: PhaseKey) => {
     if (!currentUser) return false
     return wasPhaseConfirmed(state.submissions, currentUser.id, phase)
   }, [currentUser, state.submissions])
+
+  const savePrediction = useCallback(async (payload: SavePredictionInput): Promise<ActionResult> => {
+    if (!currentUser) {
+      return { ok: false as const, message: 'Debes iniciar sesion.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false as const, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    const match = state.matches.find(m => m.id === payload.matchId && m.phase === payload.phase)
+
+    if (!match) {
+      return { ok: false as const, message: 'Partido no encontrado.' }
+    }
+
+    if (match.status !== 'scheduled') {
+      return { ok: false as const, message: 'No se puede modificar el pronostico: el partido esta en curso o finalizado.' }
+    }
+
+    if (!currentUser.isAdmin && isPhaseConfirmed(payload.phase)) {
+      return { ok: false as const, message: 'La fase ya fue confirmada y no admite cambios.' }
+    }
+
+    const hasPrediction = hasLocalPrediction(state.predictions, {
+      userId: currentUser.id,
+      phase: payload.phase,
+      matchId: payload.matchId,
+    })
+    const response = await savePredictionWithFallback(
+      (action, input) =>
+        invokeAuthenticatedQuinielasAction<SavePredictionInput, { prediction: PredictionDTO }>(
+          action,
+          sessionToken,
+          input,
+        ),
+      payload,
+      hasPrediction,
+    )
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    const updatedPrediction = mapPredictionDTO(response.data.prediction)
+    setState((prev) => {
+      const nextPredictions = [...prev.predictions]
+      const existingIndex = nextPredictions.findIndex(
+        (item) =>
+          item.userId === currentUser.id &&
+          item.phase === payload.phase &&
+          item.matchId === payload.matchId,
+      )
+
+      if (existingIndex >= 0) {
+        nextPredictions[existingIndex] = updatedPrediction
+      } else {
+        nextPredictions.push(updatedPrediction)
+      }
+
+      return {
+        ...prev,
+        predictions: nextPredictions,
+      }
+    })
+
+    return { ok: true }
+  }, [currentUser, sessionToken, state.predictions, state.matches, isPhaseConfirmed])
+
+  const confirmPhase = useCallback(async (phase: PhaseKey): Promise<ActionResult> => {
+    if (!currentUser) {
+      return { ok: false as const, message: 'Debes iniciar sesion.' }
+    }
+
+    if (!sessionToken) {
+      return { ok: false as const, message: 'Sesion invalida. Inicia sesion de nuevo.' }
+    }
+
+    if (isPhaseConfirmed(phase)) {
+      return { ok: false as const, message: 'Esta fase ya fue confirmada.' }
+    }
+
+    const response = await invokeAuthenticatedQuinielasAction<
+      { phase: PhaseKey },
+      { submission: PhaseSubmissionDTO }
+    >('create_phase_submission', sessionToken, { phase })
+
+    if (!response.ok) {
+      return { ok: false, message: response.error.message }
+    }
+
+    const submission = mapSubmissionDTO(response.data.submission)
+
+    setState((prev) => ({
+      ...prev,
+      submissions: [...prev.submissions.filter((item) => !(item.userId === submission.userId && item.phase === submission.phase)), submission],
+    }))
+
+    await refreshLeaderboard()
+
+    return { ok: true }
+  }, [currentUser, sessionToken, isPhaseConfirmed, refreshLeaderboard])
 
   const isPhaseLockedAtNow = useCallback((phase: PhaseKey) => {
     if (!ready) return false
@@ -1022,6 +1092,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     scoringMode,
     getScoringConfig,
     updateScoringConfig,
+    forcedActivePhase,
+    getForcedActivePhase,
+    updateForcedActivePhase,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

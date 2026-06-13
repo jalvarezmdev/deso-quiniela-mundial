@@ -4,6 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MatchScoreEntry } from './match-score-entry'
 import type { Match, Prediction } from '#/lib/types'
 
+function futureKickoffAt(): string {
+  const date = new Date()
+  date.setFullYear(date.getFullYear() + 1)
+  return date.toISOString()
+}
+
 function createMatch(overrides: Partial<Match> = {}): Match {
   return {
     id: 'match-1',
@@ -11,7 +17,7 @@ function createMatch(overrides: Partial<Match> = {}): Match {
     groupName: 'Grupo A',
     homeTeamId: 'mex',
     awayTeamId: 'zaf',
-    kickoffAt: '2026-06-11T20:00:00.000Z',
+    kickoffAt: futureKickoffAt(),
     status: 'scheduled',
     homeGoals: null,
     awayGoals: null,

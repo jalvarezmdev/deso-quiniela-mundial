@@ -173,9 +173,10 @@ export function useQuinielaMatchFlowController({
   )
 
   const open = useCallback(() => {
+    if (matches.length === 0) return
     setFlowState((current) => {
       const clamped = clampFlowState(current, matches)
-      return { ...clamped, isOpen: matches.length > 0 }
+      return { ...clamped, isOpen: true }
     })
   }, [matches, setFlowState])
 

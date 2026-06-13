@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { RequireAuth } from '#/components/layout/require-auth'
 import { PageShell } from '#/components/layout/page-shell'
@@ -6,40 +6,33 @@ import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { ResultadosMatchCard } from '#/components/resultados-match-card'
 import { useApp } from '#/context/app-context'
-import { invokeAuthenticatedQuinielasAction, type ListMyMatchPointsResultDTO } from '#/lib/quinielas-api'
+import { getUserMatchPointsMap } from '#/lib/calculate-points'
 import { getGroupMatchRoundMap } from '#/lib/group-rounds'
 import { getTeam } from '#/lib/teams'
 import { toVenDateTimeLabel } from '#/lib/time'
 import { PHASES, type PhaseKey } from '#/lib/types'
+import { canPredictMatch } from '#/lib/match-lock'
 
 export const Route = createFileRoute('/resultados')({
   component: ResultadosPage,
 })
 
 function ResultadosPage() {
-  const { state, refreshLive, scoringMode, sessionToken } = useApp()
+  const { state, refreshLive, currentUser, isPhaseConfirmed } = useApp()
+  const navigate = useNavigate()
   const [countryFilter, setCountryFilter] = useState('')
   const [groupFilter, setGroupFilter] = useState('todos')
   const [matchdayFilter, setMatchdayFilter] = useState('todas')
-  const [matchPoints, setMatchPoints] = useState<Record<string, number>>({})
 
-  useEffect(() => {
-    if (scoringMode !== 'per_match' || !sessionToken) return
-
-    invokeAuthenticatedQuinielasAction<Record<string, never>, ListMyMatchPointsResultDTO>(
-      'list_my_match_points',
-      sessionToken,
-      {},
-    ).then((response) => {
-      if (response.ok) {
-        const map: Record<string, number> = {}
-        for (const entry of response.data.matchPoints) {
-          map[entry.matchId] = entry.points
-        }
-        setMatchPoints(map)
-      }
-    })
-  }, [scoringMode, sessionToken])
+  const matchPoints = useMemo(
+    () =>
+      getUserMatchPointsMap(
+        state.matches,
+        state.predictions,
+        currentUser?.id ?? '',
+      ),
+    [state.matches, state.predictions, currentUser?.id],
+  )
 
   useEffect(() => {
     refreshLive()
@@ -226,6 +219,9 @@ function ResultadosPage() {
                 {bucket.matches.map((match) => {
                   const home = getTeam(match.homeTeamId)
                   const away = getTeam(match.awayTeamId)
+                  const isAdmin = Boolean(currentUser?.isAdmin)
+                  const phaseConfirmed = isPhaseConfirmed(match.phase)
+                  const userCanPredict = canPredictMatch(match, isAdmin, phaseConfirmed)
 
                   return (
                     <div key={match.id}>
@@ -235,12 +231,10 @@ function ResultadosPage() {
                         away={away}
                         phaseLabel={phaseLabel(match.phase)}
                         isLiveHighlighted={match.status === 'live'}
+                        canPredict={userCanPredict}
+                        onPredict={() => void navigate({ to: '/quiniela', search: { phasePreview: undefined } })}
+                        points={matchPoints[match.id]}
                       />
-                      {scoringMode === 'per_match' && matchPoints[match.id] !== undefined && (
-                        <p className="mt-1 text-sm font-medium text-green-600">
-                          +{matchPoints[match.id]} puntos
-                        </p>
-                      )}
                     </div>
                   )
                 })}

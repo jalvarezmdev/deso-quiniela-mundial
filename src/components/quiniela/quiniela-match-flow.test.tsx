@@ -11,6 +11,12 @@ import {
 } from './quiniela-match-flow-context'
 import type { Match, Prediction } from '#/lib/types'
 
+function futureKickoffAt(): string {
+  const date = new Date()
+  date.setFullYear(date.getFullYear() + 1)
+  return date.toISOString()
+}
+
 function createMatch(id: string, homeTeamId: string, awayTeamId: string): Match {
   return {
     id,
@@ -18,7 +24,7 @@ function createMatch(id: string, homeTeamId: string, awayTeamId: string): Match 
     groupName: 'Grupo A',
     homeTeamId,
     awayTeamId,
-    kickoffAt: '2026-06-11T20:00:00.000Z',
+    kickoffAt: futureKickoffAt(),
     status: 'scheduled',
     homeGoals: null,
     awayGoals: null,

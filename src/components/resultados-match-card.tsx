@@ -1,4 +1,7 @@
+import { useState } from 'react'
+import { Trophy } from 'lucide-react'
 import { Card } from '#/components/ui/card'
+import { MatchPredictionsDialog } from '#/components/match-predictions-dialog'
 import type { Match, Team } from '#/lib/types'
 import { toVenShortDateLabel, toVenShortTimeLabel } from '#/lib/time'
 
@@ -20,6 +23,9 @@ type ResultadosMatchCardProps = {
   away: Team
   phaseLabel: string
   isLiveHighlighted?: boolean
+  canPredict?: boolean
+  onPredict?: () => void
+  points?: number
 }
 
 export function ResultadosMatchCard({
@@ -28,10 +34,15 @@ export function ResultadosMatchCard({
   away,
   phaseLabel,
   isLiveHighlighted = false,
+  canPredict = false,
+  onPredict,
+  points,
 }: ResultadosMatchCardProps) {
   const cardClassName = isLiveHighlighted
     ? 'rounded-lg border-lime-400/60 bg-lime-500/5 ring-1 ring-lime-400/30 p-3 md:p-4'
     : 'rounded-lg p-3 md:p-4'
+
+  const [showPredictions, setShowPredictions] = useState(false)
 
   return (
     <Card className={cardClassName}>
@@ -63,13 +74,35 @@ export function ResultadosMatchCard({
           </span>
           <p className="text-xs text-zinc-400">{toVenShortDateLabel(match.kickoffAt)}</p>
           <p className="text-xs text-zinc-500">{toVenShortTimeLabel(match.kickoffAt)}</p>
-          {match.manualOverride ? (
-            <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold text-zinc-300">
-              MANUAL
-            </span>
-          ) : null}
         </div>
       </div>
+
+      {['live', 'final'].includes(match.status) && (
+        <>
+          <div className="mt-3 flex items-center justify-between">
+            {points !== undefined && (
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/60 bg-[var(--accent)]/5 px-3 py-1">
+                <Trophy className="h-3.5 w-3.5 text-[var(--accent)]" />
+                <span className="text-xs font-bold uppercase text-[var(--accent)]">
+                  +{points} pts
+                </span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowPredictions(true)}
+              className="rounded-lg border border-[var(--accent)]/60 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)] transition hover:bg-[var(--accent)]/20"
+            >
+              Ver Resultados
+            </button>
+          </div>
+          <MatchPredictionsDialog
+            match={match}
+            open={showPredictions}
+            onClose={() => setShowPredictions(false)}
+          />
+        </>
+      )}
     </Card>
   )
 }
