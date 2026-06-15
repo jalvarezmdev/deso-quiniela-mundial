@@ -72,6 +72,7 @@ export type PredictionForMatchDTO = {
   nickname: string
   homeGoals: number
   awayGoals: number
+  points: number
 }
 
 export type ListPredictionsForMatchResultDTO = {
