@@ -98,6 +98,19 @@ function ResultadosPage() {
     })
   }, [countryFilter, groupFilter, matchdayFilter, sortedMatches, groupRoundMap])
 
+  const lastPlayedMatches = useMemo(() => {
+    const liveOrFinal = state.matches.filter(
+      (m) => m.status === 'live' || m.status === 'final',
+    )
+    if (liveOrFinal.length === 0) return []
+    const maxKickoff = Math.max(
+      ...liveOrFinal.map((m) => new Date(m.kickoffAt).getTime()),
+    )
+    return liveOrFinal.filter(
+      (m) => new Date(m.kickoffAt).getTime() === maxKickoff,
+    )
+  }, [state.matches])
+
   const matchesByMatchday = useMemo(() => {
     const grouped = new Map<string, typeof filteredMatches>()
     for (const match of filteredMatches) {
@@ -206,6 +219,41 @@ function ResultadosPage() {
             </div>
           </div>
         </section>
+
+        {lastPlayedMatches.length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
+              {lastPlayedMatches.some((m) => m.status === 'live')
+                ? 'Partido EN VIVO'
+                : 'Ultimo Partido'}
+            </h3>
+            <div className="mt-2 grid gap-3">
+              {lastPlayedMatches.map((match) => {
+                const home = getTeam(match.homeTeamId)
+                const away = getTeam(match.awayTeamId)
+                const isAdmin = Boolean(currentUser?.isAdmin)
+                const phaseConfirmed = isPhaseConfirmed(match.phase)
+                const userCanPredict = canPredictMatch(match, isAdmin, phaseConfirmed)
+
+                return (
+                  <div key={match.id}>
+                    <ResultadosMatchCard
+                      match={match}
+                      home={home}
+                      away={away}
+                      phaseLabel={phaseLabel(match.phase)}
+                      isLiveHighlighted={match.status === 'live'}
+                      canPredict={userCanPredict}
+                      onPredict={() => void navigate({ to: '/quiniela', search: { phasePreview: undefined } })}
+                      points={matchPoints[match.id]}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            <hr className="mt-4 border-t border-zinc-800" />
+          </div>
+        )}
 
         {matchesByMatchday.length === 0 ? (
           <p className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4 text-sm text-zinc-400">
