@@ -1,0 +1,12 @@
+{
+  "name": "scrape-sofascore",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "scrape": "npx tsx index.ts"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0",
+    "tsx": "^4.19.0"
+  }
+}
