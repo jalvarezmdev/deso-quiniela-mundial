@@ -12,6 +12,7 @@ import { getTeam } from '#/lib/teams'
 import { toVenDateTimeLabel } from '#/lib/time'
 import { PHASES, type PhaseKey } from '#/lib/types'
 import { canPredictMatch } from '#/lib/match-lock'
+import { useLastPlayedMatches } from '#/hooks/use-last-played-matches'
 
 export const Route = createFileRoute('/resultados')({
   component: ResultadosPage,
@@ -98,18 +99,7 @@ function ResultadosPage() {
     })
   }, [countryFilter, groupFilter, matchdayFilter, sortedMatches, groupRoundMap])
 
-  const lastPlayedMatches = useMemo(() => {
-    const liveOrFinal = state.matches.filter(
-      (m) => m.status === 'live' || m.status === 'final',
-    )
-    if (liveOrFinal.length === 0) return []
-    const maxKickoff = Math.max(
-      ...liveOrFinal.map((m) => new Date(m.kickoffAt).getTime()),
-    )
-    return liveOrFinal.filter(
-      (m) => new Date(m.kickoffAt).getTime() === maxKickoff,
-    )
-  }, [state.matches])
+  const lastPlayedMatches = useLastPlayedMatches(state.matches)
 
   const matchesByMatchday = useMemo(() => {
     const grouped = new Map<string, typeof filteredMatches>()
