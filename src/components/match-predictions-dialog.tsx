@@ -109,11 +109,11 @@ export function MatchPredictionsDialog({
                   className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/50 px-3 py-2"
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="truncate text-sm font-medium text-zinc-200">
-                      {pred.nickname}
-                    </span>
                     <span className="shrink-0 rounded-full border border-[var(--accent)]/60 bg-[var(--accent)]/10 px-2 py-0.5 text-xs font-bold text-[var(--accent)]">
                       +{pred.points} PTS
+                    </span>
+                    <span className="truncate text-sm font-medium text-zinc-200">
+                      {pred.nickname}
                     </span>
                   </div>
                   <span className="shrink-0 text-sm font-bold text-[var(--primary)]">

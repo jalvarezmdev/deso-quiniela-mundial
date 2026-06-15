@@ -65,7 +65,7 @@ describe('MatchPredictionsDialog', () => {
     const zeroPoints = await screen.findByText('+0 PTS')
     const threePoints = screen.getByText('+3 PTS')
 
-    expect(zeroPoints.previousElementSibling?.textContent).toBe('Asdrubal')
-    expect(threePoints.previousElementSibling?.textContent).toBe('Juan')
+    expect(zeroPoints.nextElementSibling?.textContent).toBe('Asdrubal')
+    expect(threePoints.nextElementSibling?.textContent).toBe('Juan')
   })
 })
