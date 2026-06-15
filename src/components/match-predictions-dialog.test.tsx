@@ -3,6 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MatchPredictionsDialog } from './match-predictions-dialog'
 import type { Match } from '#/lib/types'
+import { invokeAuthenticatedQuinielasAction } from '#/lib/quinielas-api'
 
 const match: Match = {
   id: 'm-1',
@@ -46,5 +47,25 @@ describe('MatchPredictionsDialog', () => {
     const heading = screen.getByRole('heading')
     expect(heading.textContent).toContain('Argentina')
     expect(heading.textContent).toContain('Brazil')
+  })
+
+  it('shows points for every user including zero', async () => {
+    vi.mocked(invokeAuthenticatedQuinielasAction).mockResolvedValueOnce({
+      ok: true,
+      data: {
+        predictions: [
+          { nickname: 'Asdrubal', homeGoals: 0, awayGoals: 2, points: 0 },
+          { nickname: 'Juan', homeGoals: 2, awayGoals: 1, points: 3 },
+        ],
+      },
+    })
+
+    render(<MatchPredictionsDialog match={match} open={true} onClose={vi.fn()} />)
+
+    const zeroPoints = await screen.findByText('+0 PTS')
+    const threePoints = screen.getByText('+3 PTS')
+
+    expect(zeroPoints.previousElementSibling?.textContent).toBe('Asdrubal')
+    expect(threePoints.previousElementSibling?.textContent).toBe('Juan')
   })
 })

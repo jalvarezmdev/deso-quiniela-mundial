@@ -65,6 +65,8 @@ export async function computeAndStoreMatchPoints(
 
   // Need both scores to compute
   if (match.homeGoals === null || match.awayGoals === null) return;
+  const homeGoals = match.homeGoals;
+  const awayGoals = match.awayGoals;
 
   // Fetch all predictions for this match
   const { data: predictions } = await supabase
@@ -81,8 +83,8 @@ export async function computeAndStoreMatchPoints(
     phase: match.phase,
     points: computeMatchPoints({
       phase: match.phase,
-      homeGoals: match.homeGoals,
-      awayGoals: match.awayGoals,
+      homeGoals,
+      awayGoals,
       qualifiedTeamId: match.qualifiedTeamId,
       predictedHomeGoals: pred.home_goals,
       predictedAwayGoals: pred.away_goals,
