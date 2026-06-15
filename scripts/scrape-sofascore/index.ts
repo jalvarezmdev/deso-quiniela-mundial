@@ -9,7 +9,7 @@ const DRY_RUN = process.argv.includes("--dry-run")
 const TOURNAMENT_URL =
   "https://www.sofascore.com/football/tournament/world/world-championship/16#id:58210"
 const EDGE_FUNCTION_URL =
-  "https://gkzzioxyulibwvdvkjmy.supabase.co/functions/v1/scrape-sofascore"
+  "https://sfhwktnwcumwmohizbtm.supabase.co/functions/v1/scrape-sofascore"
 // const SUPABASE_ANON_KEY = "sb_publishable_8WEd6F-fQ9JiVOhfA6Pzpw_F2eYF4Fv" // production
 const SUPABASE_ANON_KEY = "sb_publishable_NSMBuMTwApAjK4DAGeLcjw_vxcZi7oM" // staging
 
