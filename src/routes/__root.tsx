@@ -18,7 +18,7 @@ export const Route = createRootRoute({
       { charSet: 'utf-8' },
       {
         name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
+        content: 'width=device-width, initial-scale=1, viewport-fit=cover',
       },
       {
         title: 'Quiniela Mundial 2026',
@@ -97,7 +97,7 @@ export function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <div className="relative flex-1 overflow-hidden pb-20 md:pb-0">
+      <div className={`relative flex-1 overflow-hidden md:pb-0 ${currentUser ? 'pb-20' : ''}`}>
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10"

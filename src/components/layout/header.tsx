@@ -81,7 +81,7 @@ export function Header() {
       </header>
 
       {currentUser ? (
-        <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--line)] bg-[var(--secondary)]/95 px-2 py-2 backdrop-blur md:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--line)] bg-[var(--secondary)]/95 px-2 pt-2 pb-[env(safe-area-inset-bottom,0.5rem)] backdrop-blur md:hidden">
           <div className="mx-auto flex w-full max-w-md items-center justify-between gap-1">
             {allNavItems.map(({ to, label, icon: Icon }) => (
               <Link
