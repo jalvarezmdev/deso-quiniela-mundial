@@ -53,6 +53,7 @@ export type RequestEnvelope = {
 };
 
 export const PIN_REGEX = /^\d{6}$/;
+export const MAX_NICKNAME_LENGTH = 50;
 
 export const corsHeaders = { ...supabaseCorsHeaders };
 
@@ -88,6 +89,10 @@ export function normalizeEmail(value: unknown): string {
 export function normalizeNickname(value: unknown): string {
   if (typeof value !== "string") return "";
   return value.trim();
+}
+
+export function countNicknameCharacters(nickname: string): number {
+  return Array.from(nickname).length;
 }
 
 export function normalizeTeamId(value: unknown): string {
