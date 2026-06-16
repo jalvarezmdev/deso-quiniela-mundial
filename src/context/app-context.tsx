@@ -52,9 +52,14 @@ import {
 
 const SESSION_TOKEN_KEY = 'quiniela_session_token_v1'
 const HYDRATION_SAFE_NOW_ISO = '2026-01-01T00:00:00.000Z'
+const MAX_NICKNAME_LENGTH = 50
 
 function isPinValid(pin: string): boolean {
   return /^\d{6}$/.test(pin)
+}
+
+function countNicknameCharacters(nickname: string): number {
+  return Array.from(nickname).length
 }
 
 function wasPhaseConfirmed(submissions: PhaseSubmission[], userId: string, phase: PhaseKey): boolean {
@@ -507,6 +512,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     if (!email || !nickname || !teamId) {
       return formatUsersError('Todos los campos son obligatorios.')
+    }
+
+    if (countNicknameCharacters(nickname) > MAX_NICKNAME_LENGTH) {
+      return formatUsersError(`El nombre o apodo no puede superar ${MAX_NICKNAME_LENGTH} caracteres.`)
     }
 
     if (!isPinValid(payload.pin)) {

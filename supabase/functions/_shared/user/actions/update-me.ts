@@ -1,7 +1,10 @@
 import type { SupabaseAdminClient } from "../../general/supabase-client.ts";
 import {
+  countNicknameCharacters,
   handleDbError,
+  jsonError,
   jsonOk,
+  MAX_NICKNAME_LENGTH,
   normalizeNickname,
   normalizeTeamId,
   type ProfilesRow,
@@ -22,6 +25,14 @@ export async function handleUpdateMe({
   const onboardingCompleted = payload.onboardingCompleted;
 
   const updates: Record<string, unknown> = {};
+
+  if (countNicknameCharacters(nickname) > MAX_NICKNAME_LENGTH) {
+    return jsonError(
+      "VALIDATION_ERROR",
+      `El nombre o apodo no puede superar ${MAX_NICKNAME_LENGTH} caracteres.`,
+      400,
+    );
+  }
 
   if (nickname) updates.nickname = nickname;
   if (teamId) updates.team_id = teamId;

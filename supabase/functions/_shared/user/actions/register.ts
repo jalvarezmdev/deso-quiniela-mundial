@@ -2,10 +2,12 @@ import bcrypt from "npm:bcryptjs@2.4.3";
 import { buildSessionTokenPayload, signJwt } from "../../general/auth.ts";
 import type { SupabaseAdminClient } from "../../general/supabase-client.ts";
 import {
+  countNicknameCharacters,
   getEnv,
   handleDbError,
   jsonError,
   jsonOk,
+  MAX_NICKNAME_LENGTH,
   normalizeEmail,
   normalizeNickname,
   normalizePin,
@@ -34,6 +36,14 @@ export async function handleRegister({
     return jsonError(
       "VALIDATION_ERROR",
       "Todos los campos son obligatorios.",
+      400,
+    );
+  }
+
+  if (countNicknameCharacters(nickname) > MAX_NICKNAME_LENGTH) {
+    return jsonError(
+      "VALIDATION_ERROR",
+      `El nombre o apodo no puede superar ${MAX_NICKNAME_LENGTH} caracteres.`,
       400,
     );
   }
