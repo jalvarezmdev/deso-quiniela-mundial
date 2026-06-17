@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Trophy } from 'lucide-react'
 import { Card } from '#/components/ui/card'
 import { MatchPredictionsDialog } from '#/components/match-predictions-dialog'
 import type { Match, Prediction, Team } from '#/lib/types'
@@ -22,6 +23,7 @@ type PredictionsMatchCardProps = {
   away: Team
   phaseLabel: string
   prediction: Prediction | null
+  points?: number
 }
 
 export function PredictionsMatchCard({
@@ -30,6 +32,7 @@ export function PredictionsMatchCard({
   away,
   phaseLabel,
   prediction,
+  points,
 }: PredictionsMatchCardProps) {
   const isLiveHighlighted = match.status === 'live'
   const cardClassName = isLiveHighlighted
@@ -40,9 +43,19 @@ export function PredictionsMatchCard({
 
   return (
     <Card className={cardClassName}>
-      <p className="text-xs text-zinc-500">
-        {(match.groupName ?? 'Eliminatoria').toUpperCase()} · {phaseLabel}
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-zinc-500">
+          {(match.groupName ?? 'Eliminatoria').toUpperCase()} · {phaseLabel}
+        </p>
+        {points !== undefined && (
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/60 bg-[var(--accent)]/5 px-2.5 py-0.5">
+            <Trophy className="h-3.5 w-3.5 text-[var(--accent)]" />
+            <span className="text-xs font-bold uppercase text-[var(--accent)]">
+              +{points} pts
+            </span>
+          </div>
+        )}
+      </div>
 
       <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0 flex-1">

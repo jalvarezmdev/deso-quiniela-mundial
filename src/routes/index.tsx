@@ -1,5 +1,5 @@
 import { Link, Navigate, createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-hot-toast'
 import { RequireAuth } from '#/components/layout/require-auth'
 import { Button } from '#/components/ui/button'
@@ -7,6 +7,7 @@ import { Card } from '#/components/ui/card'
 import { QualifiedTeamSelect } from '#/components/ui/qualified-team-select'
 import { LoadingScreen } from '#/components/layout/loading-screen'
 import { useApp } from '#/context/app-context'
+import { getUserMatchPointsMap } from '#/lib/calculate-points'
 import { toVenDateTimeLabel } from '#/lib/time'
 import { TEAMS, getTeam } from '#/lib/teams'
 import { type Match, type MatchStatus } from '#/lib/types'
@@ -76,6 +77,16 @@ function HomePage() {
 
   const nextMatches = useNextMatches(state.matches, state.predictions, currentUser.id)
 
+  const matchPoints = useMemo(
+    () =>
+      getUserMatchPointsMap(
+        state.matches,
+        state.predictions,
+        currentUser.id,
+      ),
+    [state.matches, state.predictions, currentUser.id],
+  )
+
   return (
     <RequireAuth>
       <main className="relative mx-auto w-full max-w-6xl px-4 pb-12 pt-6">
@@ -130,6 +141,7 @@ function HomePage() {
                     away={item.away}
                     phaseLabel={item.phaseLabel}
                     prediction={item.prediction}
+                    points={matchPoints[item.match.id]}
                   />
                 ))}
               </div>
