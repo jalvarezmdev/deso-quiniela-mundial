@@ -82,13 +82,15 @@ export function PredictionsMatchCard({
         ) : (
           <span className="text-xs text-zinc-500">Sin prediccion</span>
         )}
-        <button
-          type="button"
-          onClick={() => setShowPredictions(true)}
-          className="rounded-lg border border-[var(--accent)]/60 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)] transition hover:bg-[var(--accent)]/20"
-        >
-          Ver Resultados
-        </button>
+        {['live', 'final'].includes(match.status) && (
+          <button
+            type="button"
+            onClick={() => setShowPredictions(true)}
+            className="rounded-lg border border-[var(--accent)]/60 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)] transition hover:bg-[var(--accent)]/20"
+          >
+            Ver Resultados
+          </button>
+        )}
       </div>
       <MatchPredictionsDialog
         match={match}
