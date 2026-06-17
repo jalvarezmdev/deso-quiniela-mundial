@@ -11,7 +11,7 @@ import { getUserMatchPointsMap } from '#/lib/calculate-points'
 import { toVenDateTimeLabel } from '#/lib/time'
 import { TEAMS, getTeam } from '#/lib/teams'
 import { type Match, type MatchStatus } from '#/lib/types'
-import { PredictionsMatchCard } from '#/components/predictions-match-card'
+import { MatchCard } from '#/components/match-card'
 import { useNextMatches } from '#/hooks/use-next-matches'
 import { ZapIcon } from 'lucide-react'
 
@@ -134,7 +134,7 @@ function HomePage() {
               </h3>
               <div className="mt-2 grid gap-3 md:grid-cols-3">
                 {nextMatches.map((item) => (
-                  <PredictionsMatchCard
+                  <MatchCard
                     key={item.match.id}
                     match={item.match}
                     home={item.home}

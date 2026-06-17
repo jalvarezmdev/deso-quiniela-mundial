@@ -1,17 +1,16 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { RequireAuth } from '#/components/layout/require-auth'
 import { PageShell } from '#/components/layout/page-shell'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
-import { ResultadosMatchCard } from '#/components/resultados-match-card'
+import { MatchCard } from '#/components/match-card'
 import { useApp } from '#/context/app-context'
 import { getUserMatchPointsMap } from '#/lib/calculate-points'
 import { getGroupMatchRoundMap } from '#/lib/group-rounds'
 import { getTeam } from '#/lib/teams'
 import { toVenDateTimeLabel } from '#/lib/time'
 import { PHASES, type PhaseKey } from '#/lib/types'
-import { canPredictMatch } from '#/lib/match-lock'
 import { useLastPlayedMatches } from '#/hooks/use-last-played-matches'
 
 export const Route = createFileRoute('/resultados')({
@@ -19,8 +18,7 @@ export const Route = createFileRoute('/resultados')({
 })
 
 function ResultadosPage() {
-  const { state, refreshLive, currentUser, isPhaseConfirmed } = useApp()
-  const navigate = useNavigate()
+  const { state, refreshLive, currentUser } = useApp()
   const [countryFilter, setCountryFilter] = useState('')
   const [groupFilter, setGroupFilter] = useState('todos')
   const [matchdayFilter, setMatchdayFilter] = useState('todas')
@@ -34,6 +32,17 @@ function ResultadosPage() {
       ),
     [state.matches, state.predictions, currentUser?.id],
   )
+
+  const predictionMap = useMemo(() => {
+    const map = new Map<string, typeof state.predictions[number]>()
+    if (!currentUser) return map
+    for (const pred of state.predictions) {
+      if (pred.userId === currentUser.id) {
+        map.set(pred.matchId, pred)
+      }
+    }
+    return map
+  }, [state.predictions, currentUser?.id])
 
   useEffect(() => {
     refreshLive()
@@ -221,20 +230,15 @@ function ResultadosPage() {
               {lastPlayedMatches.map((match) => {
                 const home = getTeam(match.homeTeamId)
                 const away = getTeam(match.awayTeamId)
-                const isAdmin = Boolean(currentUser?.isAdmin)
-                const phaseConfirmed = isPhaseConfirmed(match.phase)
-                const userCanPredict = canPredictMatch(match, isAdmin, phaseConfirmed)
 
                 return (
                   <div key={match.id}>
-                    <ResultadosMatchCard
+                    <MatchCard
                       match={match}
                       home={home}
                       away={away}
                       phaseLabel={phaseLabel(match.phase)}
-                      isLiveHighlighted={match.status === 'live'}
-                      canPredict={userCanPredict}
-                      onPredict={() => void navigate({ to: '/quiniela', search: { phasePreview: undefined } })}
+                      prediction={predictionMap.get(match.id) ?? null}
                       points={matchPoints[match.id]}
                     />
                   </div>
@@ -257,20 +261,15 @@ function ResultadosPage() {
                 {bucket.matches.map((match) => {
                   const home = getTeam(match.homeTeamId)
                   const away = getTeam(match.awayTeamId)
-                  const isAdmin = Boolean(currentUser?.isAdmin)
-                  const phaseConfirmed = isPhaseConfirmed(match.phase)
-                  const userCanPredict = canPredictMatch(match, isAdmin, phaseConfirmed)
 
                   return (
                     <div key={match.id}>
-                      <ResultadosMatchCard
+                      <MatchCard
                         match={match}
                         home={home}
                         away={away}
                         phaseLabel={phaseLabel(match.phase)}
-                        isLiveHighlighted={match.status === 'live'}
-                        canPredict={userCanPredict}
-                        onPredict={() => void navigate({ to: '/quiniela', search: { phasePreview: undefined } })}
+                        prediction={predictionMap.get(match.id) ?? null}
                         points={matchPoints[match.id]}
                       />
                     </div>
