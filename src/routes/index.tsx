@@ -7,12 +7,12 @@ import { Card } from '#/components/ui/card'
 import { QualifiedTeamSelect } from '#/components/ui/qualified-team-select'
 import { LoadingScreen } from '#/components/layout/loading-screen'
 import { useApp } from '#/context/app-context'
-import { useLastPlayedMatches } from '#/hooks/use-last-played-matches'
 import { getUserMatchPointsMap } from '#/lib/calculate-points'
 import { toVenDateTimeLabel } from '#/lib/time'
 import { TEAMS, getTeam } from '#/lib/teams'
-import { PHASES, type Match, type MatchStatus, type PhaseKey } from '#/lib/types'
-import { ResultadosMatchCard } from '#/components/resultados-match-card'
+import { type Match, type MatchStatus } from '#/lib/types'
+import { MatchCard } from '#/components/match-card'
+import { useNextMatches } from '#/hooks/use-next-matches'
 import { ZapIcon } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
@@ -75,7 +75,7 @@ function HomePage() {
   const userRank = sortedLeaderboard.findIndex((row) => row.userId === currentUser.id) + 1
   const leaderboardTop = sortedLeaderboard.slice(0, 5)
 
-  const lastPlayedMatches = useLastPlayedMatches(state.matches)
+  const nextMatches = useNextMatches(state.matches, state.predictions, currentUser.id)
 
   const matchPoints = useMemo(
     () =>
@@ -86,10 +86,6 @@ function HomePage() {
       ),
     [state.matches, state.predictions, currentUser.id],
   )
-
-  function phaseLabel(phase: PhaseKey): string {
-    return PHASES.find((item) => item.key === phase)?.label ?? phase
-  }
 
   return (
     <RequireAuth>
@@ -130,32 +126,24 @@ function HomePage() {
           </div>
         </section>
 
-        {lastPlayedMatches.length > 0 && (
+        {nextMatches.length > 0 && (
           <div className="mt-6">
             <div className="mb-4">
               <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
-                {lastPlayedMatches.some((m) => m.status === 'live')
-                  ? 'Partido EN VIVO'
-                  : 'Ultimo Partido'}
+                Tus proximas predicciones
               </h3>
-              <div className="mt-2 grid gap-3">
-                {lastPlayedMatches.map((match) => {
-                  const home = getTeam(match.homeTeamId)
-                  const away = getTeam(match.awayTeamId)
-
-                  return (
-                    <div key={match.id}>
-                      <ResultadosMatchCard
-                        match={match}
-                        home={home}
-                        away={away}
-                        phaseLabel={phaseLabel(match.phase)}
-                        isLiveHighlighted={match.status === 'live'}
-                        points={matchPoints[match.id]}
-                      />
-                    </div>
-                  )
-                })}
+              <div className="mt-2 grid gap-3 md:grid-cols-3">
+                {nextMatches.map((item) => (
+                  <MatchCard
+                    key={item.match.id}
+                    match={item.match}
+                    home={item.home}
+                    away={item.away}
+                    phaseLabel={item.phaseLabel}
+                    prediction={item.prediction}
+                    points={matchPoints[item.match.id]}
+                  />
+                ))}
               </div>
               <hr className="mt-4 border-t border-zinc-800" />
             </div>
