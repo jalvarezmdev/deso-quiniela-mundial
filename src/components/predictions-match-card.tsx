@@ -1,5 +1,6 @@
-import { Link } from '@tanstack/react-router'
+import { useState } from 'react'
 import { Card } from '#/components/ui/card'
+import { MatchPredictionsDialog } from '#/components/match-predictions-dialog'
 import type { Match, Prediction, Team } from '#/lib/types'
 import { toVenShortDateLabel, toVenShortTimeLabel } from '#/lib/time'
 
@@ -34,6 +35,8 @@ export function PredictionsMatchCard({
   const cardClassName = isLiveHighlighted
     ? 'rounded-lg border-lime-400/60 bg-lime-500/5 ring-1 ring-lime-400/30 p-3 md:p-4'
     : 'rounded-lg p-3 md:p-4'
+
+  const [showPredictions, setShowPredictions] = useState(false)
 
   return (
     <Card className={cardClassName}>
@@ -79,14 +82,19 @@ export function PredictionsMatchCard({
         ) : (
           <span className="text-xs text-zinc-500">Sin prediccion</span>
         )}
-        <Link
-          to="/quiniela"
-          search={{ phasePreview: undefined }}
-          className="rounded-lg border border-[var(--accent)]/60 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)] no-underline transition hover:bg-[var(--accent)]/20"
+        <button
+          type="button"
+          onClick={() => setShowPredictions(true)}
+          className="rounded-lg border border-[var(--accent)]/60 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)] transition hover:bg-[var(--accent)]/20"
         >
-          {prediction ? 'Ver prediccion' : 'Predecir'}
-        </Link>
+          Ver Resultados
+        </button>
       </div>
+      <MatchPredictionsDialog
+        match={match}
+        open={showPredictions}
+        onClose={() => setShowPredictions(false)}
+      />
     </Card>
   )
 }
