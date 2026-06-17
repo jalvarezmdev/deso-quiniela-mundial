@@ -1,5 +1,5 @@
 import { Link, Navigate, createFileRoute } from '@tanstack/react-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'react-hot-toast'
 import { RequireAuth } from '#/components/layout/require-auth'
 import { Button } from '#/components/ui/button'
@@ -7,12 +7,9 @@ import { Card } from '#/components/ui/card'
 import { QualifiedTeamSelect } from '#/components/ui/qualified-team-select'
 import { LoadingScreen } from '#/components/layout/loading-screen'
 import { useApp } from '#/context/app-context'
-import { useLastPlayedMatches } from '#/hooks/use-last-played-matches'
-import { getUserMatchPointsMap } from '#/lib/calculate-points'
 import { toVenDateTimeLabel } from '#/lib/time'
 import { TEAMS, getTeam } from '#/lib/teams'
-import { PHASES, type Match, type MatchStatus, type PhaseKey } from '#/lib/types'
-import { ResultadosMatchCard } from '#/components/resultados-match-card'
+import { type Match, type MatchStatus } from '#/lib/types'
 import { PredictionsMatchCard } from '#/components/predictions-match-card'
 import { useNextMatches } from '#/hooks/use-next-matches'
 import { ZapIcon } from 'lucide-react'
@@ -77,23 +74,7 @@ function HomePage() {
   const userRank = sortedLeaderboard.findIndex((row) => row.userId === currentUser.id) + 1
   const leaderboardTop = sortedLeaderboard.slice(0, 5)
 
-  const lastPlayedMatches = useLastPlayedMatches(state.matches)
-
-  const matchPoints = useMemo(
-    () =>
-      getUserMatchPointsMap(
-        state.matches,
-        state.predictions,
-        currentUser.id,
-      ),
-    [state.matches, state.predictions, currentUser.id],
-  )
-
   const nextMatches = useNextMatches(state.matches, state.predictions, currentUser.id)
-
-  function phaseLabel(phase: PhaseKey): string {
-    return PHASES.find((item) => item.key === phase)?.label ?? phase
-  }
 
   return (
     <RequireAuth>
@@ -151,38 +132,6 @@ function HomePage() {
                     prediction={item.prediction}
                   />
                 ))}
-              </div>
-              <hr className="mt-4 border-t border-zinc-800" />
-            </div>
-          </div>
-        )}
-
-        {lastPlayedMatches.length > 0 && (
-          <div className="mt-6">
-            <div className="mb-4">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
-                {lastPlayedMatches.some((m) => m.status === 'live')
-                  ? 'Partido EN VIVO'
-                  : 'Ultimo Partido'}
-              </h3>
-              <div className="mt-2 grid gap-3">
-                {lastPlayedMatches.map((match) => {
-                  const home = getTeam(match.homeTeamId)
-                  const away = getTeam(match.awayTeamId)
-
-                  return (
-                    <div key={match.id}>
-                      <ResultadosMatchCard
-                        match={match}
-                        home={home}
-                        away={away}
-                        phaseLabel={phaseLabel(match.phase)}
-                        isLiveHighlighted={match.status === 'live'}
-                        points={matchPoints[match.id]}
-                      />
-                    </div>
-                  )
-                })}
               </div>
               <hr className="mt-4 border-t border-zinc-800" />
             </div>
