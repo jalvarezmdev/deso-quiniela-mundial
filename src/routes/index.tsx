@@ -10,9 +10,10 @@ import { useApp } from '#/context/app-context'
 import { getUserMatchPointsMap } from '#/lib/calculate-points'
 import { toVenDateTimeLabel } from '#/lib/time'
 import { TEAMS, getTeam } from '#/lib/teams'
-import { type Match, type MatchStatus } from '#/lib/types'
+import { type Match, type MatchStatus, type PhaseKey, PHASES } from '#/lib/types'
 import { MatchCard } from '#/components/match-card'
 import { useNextMatches } from '#/hooks/use-next-matches'
+import { useLastPlayedMatches } from '#/hooks/use-last-played-matches'
 import { ZapIcon } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
@@ -20,7 +21,7 @@ export const Route = createFileRoute('/')({
 })
 
 function HomePage() {
-  const { authResolved, currentUser, state, leaderboard, updateFavoriteTeam } = useApp()
+  const { authResolved, currentUser, state, leaderboard, updateFavoriteTeam, refreshLive } = useApp()
   const defaultTeamId = TEAMS[0]?.id ?? 'mex'
   const [selectedTeamId, setSelectedTeamId] = useState(currentUser?.teamId ?? defaultTeamId)
   const [savingFavorite, setSavingFavorite] = useState(false)
@@ -31,6 +32,42 @@ function HomePage() {
     const currentTeamIsQualified = TEAMS.some((team) => team.id === currentUser.teamId)
     setSelectedTeamId(currentTeamIsQualified ? currentUser.teamId : defaultTeamId)
   }, [currentUser, defaultTeamId])
+
+  useEffect(() => {
+    refreshLive()
+    const timer = window.setInterval(() => refreshLive(), 60_000)
+    return () => window.clearInterval(timer)
+  }, [refreshLive])
+
+  const userId = currentUser?.id ?? ''
+
+  const nextMatches = useNextMatches(state.matches, state.predictions, userId)
+  const lastPlayedMatches = useLastPlayedMatches(state.matches)
+
+  const predictionMap = useMemo(() => {
+    const map = new Map<string, typeof state.predictions[number]>()
+    if (!currentUser) return map
+    for (const pred of state.predictions) {
+      if (pred.userId === currentUser.id) {
+        map.set(pred.matchId, pred)
+      }
+    }
+    return map
+  }, [state.predictions, currentUser])
+
+  function phaseLabel(phase: PhaseKey): string {
+    return PHASES.find((item) => item.key === phase)?.label ?? phase
+  }
+
+  const matchPoints = useMemo(
+    () =>
+      getUserMatchPointsMap(
+        state.matches,
+        state.predictions,
+        userId,
+      ),
+    [state.matches, state.predictions, userId],
+  )
 
   if (!authResolved) {
     return <LoadingScreen />
@@ -74,18 +111,6 @@ function HomePage() {
   })
   const userRank = sortedLeaderboard.findIndex((row) => row.userId === currentUser.id) + 1
   const leaderboardTop = sortedLeaderboard.slice(0, 5)
-
-  const nextMatches = useNextMatches(state.matches, state.predictions, currentUser.id)
-
-  const matchPoints = useMemo(
-    () =>
-      getUserMatchPointsMap(
-        state.matches,
-        state.predictions,
-        currentUser.id,
-      ),
-    [state.matches, state.predictions, currentUser.id],
-  )
 
   return (
     <RequireAuth>
@@ -147,6 +172,35 @@ function HomePage() {
               </div>
               <hr className="mt-4 border-t border-zinc-800" />
             </div>
+          </div>
+        )}
+
+        {lastPlayedMatches.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
+              {lastPlayedMatches.some((m) => m.status === 'live')
+                ? 'Partido EN VIVO'
+                : 'Ultimo Partido'}
+            </h3>
+            <div className="mt-2 grid gap-3">
+              {lastPlayedMatches.map((match) => {
+                const home = getTeam(match.homeTeamId)
+                const away = getTeam(match.awayTeamId)
+
+                return (
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    home={home}
+                    away={away}
+                    phaseLabel={phaseLabel(match.phase)}
+                    prediction={predictionMap.get(match.id) ?? null}
+                    points={matchPoints[match.id]}
+                  />
+                )
+              })}
+            </div>
+            <hr className="mt-4 border-t border-zinc-800" />
           </div>
         )}
 
