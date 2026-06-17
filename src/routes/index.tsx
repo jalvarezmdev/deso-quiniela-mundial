@@ -13,6 +13,8 @@ import { toVenDateTimeLabel } from '#/lib/time'
 import { TEAMS, getTeam } from '#/lib/teams'
 import { PHASES, type Match, type MatchStatus, type PhaseKey } from '#/lib/types'
 import { ResultadosMatchCard } from '#/components/resultados-match-card'
+import { PredictionsMatchCard } from '#/components/predictions-match-card'
+import { useNextMatches } from '#/hooks/use-next-matches'
 import { ZapIcon } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
@@ -87,6 +89,8 @@ function HomePage() {
     [state.matches, state.predictions, currentUser.id],
   )
 
+  const nextMatches = useNextMatches(state.matches, state.predictions, currentUser.id)
+
   function phaseLabel(phase: PhaseKey): string {
     return PHASES.find((item) => item.key === phase)?.label ?? phase
   }
@@ -129,6 +133,29 @@ function HomePage() {
             </div>
           </div>
         </section>
+
+        {nextMatches.length > 0 && (
+          <div className="mt-6">
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
+                Tus proximas predicciones
+              </h3>
+              <div className="mt-2 grid gap-3 md:grid-cols-3">
+                {nextMatches.map((item) => (
+                  <PredictionsMatchCard
+                    key={item.match.id}
+                    match={item.match}
+                    home={item.home}
+                    away={item.away}
+                    phaseLabel={item.phaseLabel}
+                    prediction={item.prediction}
+                  />
+                ))}
+              </div>
+              <hr className="mt-4 border-t border-zinc-800" />
+            </div>
+          </div>
+        )}
 
         {lastPlayedMatches.length > 0 && (
           <div className="mt-6">
