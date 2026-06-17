@@ -16,6 +16,7 @@ import {
 } from "#/components/quiniela/quiniela-match-flow-context";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
+import { Input } from "#/components/ui/input";
 import { Card } from "#/components/ui/card";
 import { useApp } from "#/context/app-context";
 import {
@@ -27,10 +28,8 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
-  getGroupMatchRoundMap,
   getGroupRounds,
   GROUP_ROUNDS,
-  groupMatchesByGroupName,
   type GroupRound,
 } from "#/lib/group-rounds";
 import { getTeam } from "#/lib/teams";
@@ -172,6 +171,8 @@ function QuinielaPage() {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isSavingMatch, setIsSavingMatch] = useState(false);
   const [roundFilter, setRoundFilter] = useState<RoundFilter>("all");
+  const [countryFilter, setCountryFilter] = useState("");
+  const [groupFilter, setGroupFilter] = useState("todos");
   const [showPreviewControls, setShowPreviewControls] = useState(false);
   const [previewByPhase, setPreviewByPhase] = useState<
     Record<KnockoutPhase, boolean>
@@ -187,12 +188,40 @@ function QuinielaPage() {
     () =>
       state.matches
         .filter((match) => match.phase === displayedPhase)
+        .filter((match) => {
+          const normalizedCountryFilter = countryFilter.trim().toLowerCase();
+          if (normalizedCountryFilter.length > 0) {
+            const home = getTeam(match.homeTeamId);
+            const away = getTeam(match.awayTeamId);
+            if (
+              !home.name.toLowerCase().includes(normalizedCountryFilter) &&
+              !away.name.toLowerCase().includes(normalizedCountryFilter)
+            ) {
+              return false;
+            }
+          }
+          if (groupFilter !== "todos") {
+            const normalizedGroup =
+              (match.groupName ?? "Sin grupo").trim() || "Sin grupo";
+            if (normalizedGroup !== groupFilter) return false;
+          }
+          return true;
+        })
         .sort(
           (a, b) =>
             new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime(),
         ),
-    [displayedPhase, state.matches],
+    [displayedPhase, state.matches, countryFilter, groupFilter],
   );
+
+  const allGroups = useMemo(() => {
+    const groupSet = new Set<string>();
+    for (const match of state.matches.filter((m) => m.phase === displayedPhase)) {
+      groupSet.add((match.groupName ?? "Sin grupo").trim() || "Sin grupo");
+    }
+    return [...groupSet].sort((a, b) => a.localeCompare(b));
+  }, [state.matches, displayedPhase]);
+
   const knockoutViews = useMemo(
     () =>
       buildKnockoutMatchViews(
@@ -609,6 +638,48 @@ function QuinielaPage() {
                 </Badge>
               </button>
             ))}
+          </section>
+
+          <section className="mb-5 grid gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4">
+            <label className="grid gap-1 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+              Buscar pais
+              <Input
+                value={countryFilter}
+                onChange={(event) => setCountryFilter(event.target.value)}
+                placeholder="Ej: Mexico, Argentina..."
+              />
+            </label>
+
+            <div className="grid gap-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Grupo</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide transition ${
+                    groupFilter === "todos"
+                      ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--secondary)]"
+                      : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500"
+                  }`}
+                  onClick={() => setGroupFilter("todos")}
+                >
+                  Todos
+                </button>
+                {allGroups.map((group) => (
+                  <button
+                    key={group}
+                    type="button"
+                    className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide transition ${
+                      groupFilter === group
+                        ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--secondary)]"
+                        : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500"
+                    }`}
+                    onClick={() => setGroupFilter(group)}
+                  >
+                    {group.replace("Grupo ", "")}
+                  </button>
+                ))}
+              </div>
+            </div>
           </section>
 
           {displayedPhase === "groups" ? (
