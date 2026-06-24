@@ -152,6 +152,6 @@ describe('MatchCard', () => {
         points={3}
       />,
     )
-    expect(screen.getByText('+3 PTS')).toBeTruthy()
+    expect(screen.getByText('+3 pts')).toBeTruthy()
   })
 })

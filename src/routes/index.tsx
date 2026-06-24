@@ -13,7 +13,7 @@ import { TEAMS, getTeam } from '#/lib/teams'
 import { type Match, type MatchStatus, type PhaseKey, PHASES } from '#/lib/types'
 import { MatchCard } from '#/components/match-card'
 import { useNextMatches } from '#/hooks/use-next-matches'
-import { useLastPlayedMatches } from '#/hooks/use-last-played-matches'
+import { useResultSummaryMatches } from '#/hooks/use-result-summary-matches'
 import { ZapIcon } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
@@ -42,7 +42,10 @@ function HomePage() {
   const userId = currentUser?.id ?? ''
 
   const nextMatches = useNextMatches(state.matches, state.predictions, userId)
-  const lastPlayedMatches = useLastPlayedMatches(state.matches)
+  const { liveMatches, recentFinalMatches } = useResultSummaryMatches(state.matches)
+  const compactResultMatches = liveMatches.length > 0
+    ? liveMatches
+    : recentFinalMatches.slice(0, 1)
 
   const predictionMap = useMemo(() => {
     const map = new Map<string, typeof state.predictions[number]>()
@@ -175,15 +178,15 @@ function HomePage() {
           </div>
         )}
 
-        {lastPlayedMatches.length > 0 && (
+        {compactResultMatches.length > 0 && (
           <div className="mt-6">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
-              {lastPlayedMatches.some((m) => m.status === 'live')
+              {compactResultMatches.some((m) => m.status === 'live')
                 ? 'Partido EN VIVO'
                 : 'Ultimo Partido'}
             </h3>
             <div className="mt-2 grid gap-3">
-              {lastPlayedMatches.map((match) => {
+              {compactResultMatches.map((match) => {
                 const home = getTeam(match.homeTeamId)
                 const away = getTeam(match.awayTeamId)
 
