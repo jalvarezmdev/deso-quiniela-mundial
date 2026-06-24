@@ -10,8 +10,8 @@ import { getUserMatchPointsMap } from '#/lib/calculate-points'
 import { getGroupMatchRoundMap } from '#/lib/group-rounds'
 import { getTeam } from '#/lib/teams'
 import { toVenDateTimeLabel } from '#/lib/time'
-import { PHASES, type PhaseKey } from '#/lib/types'
-import { useLastPlayedMatches } from '#/hooks/use-last-played-matches'
+import { PHASES, type Match, type PhaseKey } from '#/lib/types'
+import { useResultSummaryMatches } from '#/hooks/use-result-summary-matches'
 
 export const Route = createFileRoute('/resultados')({
   component: ResultadosPage,
@@ -108,7 +108,7 @@ function ResultadosPage() {
     })
   }, [countryFilter, groupFilter, matchdayFilter, sortedMatches, groupRoundMap])
 
-  const lastPlayedMatches = useLastPlayedMatches(state.matches)
+  const { liveMatches, recentFinalMatches } = useResultSummaryMatches(state.matches)
 
   const matchesByMatchday = useMemo(() => {
     const grouped = new Map<string, typeof filteredMatches>()
@@ -122,6 +122,24 @@ function ResultadosPage() {
       .sort(([a], [b]) => a.localeCompare(b, 'es'))
       .map(([label, matches]) => ({ label, matches }))
   }, [filteredMatches, groupRoundMap])
+
+  function renderMatchCard(match: Match) {
+    const home = getTeam(match.homeTeamId)
+    const away = getTeam(match.awayTeamId)
+
+    return (
+      <div key={match.id}>
+        <MatchCard
+          match={match}
+          home={home}
+          away={away}
+          phaseLabel={phaseLabel(match.phase)}
+          prediction={predictionMap.get(match.id) ?? null}
+          points={matchPoints[match.id]}
+        />
+      </div>
+    )
+  }
 
   return (
     <RequireAuth>
@@ -219,32 +237,28 @@ function ResultadosPage() {
           </div>
         </section>
 
-        {lastPlayedMatches.length > 0 && (
+        {(liveMatches.length > 0 || recentFinalMatches.length > 0) && (
           <div className="mb-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
-              {lastPlayedMatches.some((m) => m.status === 'live')
-                ? 'Partido EN VIVO'
-                : 'Ultimo Partido'}
-            </h3>
-            <div className="mt-2 grid gap-3">
-              {lastPlayedMatches.map((match) => {
-                const home = getTeam(match.homeTeamId)
-                const away = getTeam(match.awayTeamId)
-
-                return (
-                  <div key={match.id}>
-                    <MatchCard
-                      match={match}
-                      home={home}
-                      away={away}
-                      phaseLabel={phaseLabel(match.phase)}
-                      prediction={predictionMap.get(match.id) ?? null}
-                      points={matchPoints[match.id]}
-                    />
-                  </div>
-                )
-              })}
-            </div>
+            {liveMatches.length > 0 && (
+              <section>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
+                  Partidos EN VIVO
+                </h3>
+                <div className="mt-2 grid gap-3">
+                  {liveMatches.map(renderMatchCard)}
+                </div>
+              </section>
+            )}
+            {recentFinalMatches.length > 0 && (
+              <section className={liveMatches.length > 0 ? 'mt-4' : undefined}>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
+                  Ultimos 3 resultados
+                </h3>
+                <div className="mt-2 grid gap-3">
+                  {recentFinalMatches.map(renderMatchCard)}
+                </div>
+              </section>
+            )}
             <hr className="mt-4 border-t border-zinc-800" />
           </div>
         )}
@@ -258,23 +272,7 @@ function ResultadosPage() {
             {matchesByMatchday.map((bucket) => (
               <div key={bucket.label} className="grid gap-3">
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">{bucket.label}</h3>
-                {bucket.matches.map((match) => {
-                  const home = getTeam(match.homeTeamId)
-                  const away = getTeam(match.awayTeamId)
-
-                  return (
-                    <div key={match.id}>
-                      <MatchCard
-                        match={match}
-                        home={home}
-                        away={away}
-                        phaseLabel={phaseLabel(match.phase)}
-                        prediction={predictionMap.get(match.id) ?? null}
-                        points={matchPoints[match.id]}
-                      />
-                    </div>
-                  )
-                })}
+                {bucket.matches.map(renderMatchCard)}
               </div>
             ))}
           </section>
