@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MatchCard } from './match-card'
 import type { Match, Prediction, Team } from '#/lib/types'
@@ -153,5 +153,112 @@ describe('MatchCard', () => {
       />,
     )
     expect(screen.getByText('+3 pts')).toBeTruthy()
+  })
+
+  it('shows admin result button only for live matches with save handler', () => {
+    const onSaveLiveResult = vi.fn()
+    const scheduled = createMatch()
+    const { rerender } = render(
+      <MatchCard
+        match={scheduled}
+        home={home}
+        away={away}
+        phaseLabel="Fase de Grupos"
+        canEditLiveResult
+        onSaveLiveResult={onSaveLiveResult}
+      />,
+    )
+    expect(screen.queryByText('Cargar resultado')).toBeNull()
+
+    const live = createMatch({ status: 'live', homeGoals: 0, awayGoals: 0 })
+    rerender(
+      <MatchCard
+        match={live}
+        home={home}
+        away={away}
+        phaseLabel="Fase de Grupos"
+        canEditLiveResult
+        onSaveLiveResult={onSaveLiveResult}
+      />,
+    )
+    expect(screen.getByText('Cargar resultado')).toBeTruthy()
+  })
+
+  it('saves a live group-stage result from the admin dialog', async () => {
+    const onSaveLiveResult = vi.fn(async () => ({ ok: true as const }))
+    const match = createMatch({ status: 'live', homeGoals: 1, awayGoals: 0 })
+    render(
+      <MatchCard
+        match={match}
+        home={home}
+        away={away}
+        phaseLabel="Fase de Grupos"
+        canEditLiveResult
+        onSaveLiveResult={onSaveLiveResult}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Cargar resultado'))
+    fireEvent.change(screen.getByLabelText('Goles Argentina'), { target: { value: '2' } })
+    fireEvent.change(screen.getByLabelText('Goles Brasil'), { target: { value: '1' } })
+    fireEvent.change(screen.getByLabelText('Estatus'), { target: { value: 'final' } })
+    fireEvent.click(screen.getByText('Guardar resultado'))
+
+    await waitFor(() => {
+      expect(onSaveLiveResult).toHaveBeenCalledWith({
+        matchId: 'm-1',
+        homeGoals: 2,
+        awayGoals: 1,
+        qualifiedTeamId: null,
+        status: 'final',
+      })
+    })
+  })
+
+  it('shows an error when the admin live result save fails', async () => {
+    const onSaveLiveResult = vi.fn(async () => ({
+      ok: false as const,
+      message: 'No se pudo guardar.',
+    }))
+    const match = createMatch({ status: 'live', homeGoals: 1, awayGoals: 0 })
+    render(
+      <MatchCard
+        match={match}
+        home={home}
+        away={away}
+        phaseLabel="Fase de Grupos"
+        canEditLiveResult
+        onSaveLiveResult={onSaveLiveResult}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Cargar resultado'))
+    fireEvent.click(screen.getByText('Guardar resultado'))
+
+    expect(await screen.findByText('No se pudo guardar.')).toBeTruthy()
+    expect(screen.getByText('Guardar resultado')).toBeTruthy()
+  })
+
+  it('recovers when the admin live result save throws', async () => {
+    const onSaveLiveResult = vi.fn(async () => {
+      throw new Error('network')
+    })
+    const match = createMatch({ status: 'live', homeGoals: 1, awayGoals: 0 })
+    render(
+      <MatchCard
+        match={match}
+        home={home}
+        away={away}
+        phaseLabel="Fase de Grupos"
+        canEditLiveResult
+        onSaveLiveResult={onSaveLiveResult}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('Cargar resultado'))
+    fireEvent.click(screen.getByText('Guardar resultado'))
+
+    expect(await screen.findByText('No se pudo guardar el resultado.')).toBeTruthy()
+    expect(screen.getByText('Guardar resultado')).toBeTruthy()
   })
 })

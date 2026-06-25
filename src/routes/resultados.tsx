@@ -18,7 +18,7 @@ export const Route = createFileRoute('/resultados')({
 })
 
 function ResultadosPage() {
-  const { state, refreshLive, currentUser } = useApp()
+  const { state, refreshLive, currentUser, setMatchResult } = useApp()
   const [countryFilter, setCountryFilter] = useState('')
   const [groupFilter, setGroupFilter] = useState('todos')
   const [matchdayFilter, setMatchdayFilter] = useState('todas')
@@ -136,6 +136,8 @@ function ResultadosPage() {
           phaseLabel={phaseLabel(match.phase)}
           prediction={predictionMap.get(match.id) ?? null}
           points={matchPoints[match.id]}
+          canEditLiveResult={currentUser?.isAdmin ?? false}
+          onSaveLiveResult={setMatchResult}
         />
       </div>
     )

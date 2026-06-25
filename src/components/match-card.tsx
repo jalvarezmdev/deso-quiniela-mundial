@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Trophy } from 'lucide-react'
 import { Card } from '#/components/ui/card'
+import { LiveResultDialog, type LiveResultInput, type LiveResultSaveResult } from '#/components/live-result-dialog'
 import { MatchPredictionsDialog } from '#/components/match-predictions-dialog'
 import type { Match, Prediction, Team } from '#/lib/types'
 import { toVenShortDateLabel, toVenShortTimeLabel } from '#/lib/time'
@@ -24,6 +25,8 @@ type MatchCardProps = {
   phaseLabel: string
   prediction?: Prediction | null
   points?: number
+  canEditLiveResult?: boolean
+  onSaveLiveResult?: (payload: LiveResultInput) => Promise<LiveResultSaveResult>
 }
 
 export function MatchCard({
@@ -33,6 +36,8 @@ export function MatchCard({
   phaseLabel,
   prediction,
   points,
+  canEditLiveResult = false,
+  onSaveLiveResult,
 }: MatchCardProps) {
   const isLiveHighlighted = match.status === 'live'
   const cardClassName = isLiveHighlighted
@@ -40,8 +45,10 @@ export function MatchCard({
     : 'rounded-lg p-3 md:p-4'
 
   const [showPredictions, setShowPredictions] = useState(false)
+  const [showLiveResult, setShowLiveResult] = useState(false)
 
   const showPredictionRow = prediction !== undefined
+  const showLiveResultButton = canEditLiveResult && match.status === 'live' && onSaveLiveResult
 
   return (
     <Card className={cardClassName}>
@@ -86,7 +93,7 @@ export function MatchCard({
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         {showPredictionRow ? (
           prediction ? (
             <div className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/60 bg-[var(--accent)]/5 px-3 py-1">
@@ -99,21 +106,42 @@ export function MatchCard({
             <span className="text-xs text-zinc-500">Sin prediccion</span>
           )
         ) : null}
-        {['live', 'final'].includes(match.status) && (
-          <button
-            type="button"
-            onClick={() => setShowPredictions(true)}
-            className="rounded-lg border border-[var(--accent)]/60 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)] transition hover:bg-[var(--accent)]/20"
-          >
-            Ver Resultados
-          </button>
-        )}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          {showLiveResultButton ? (
+            <button
+              type="button"
+              onClick={() => setShowLiveResult(true)}
+              className="rounded-lg border border-lime-400/70 bg-lime-400/10 px-3 py-1.5 text-xs font-bold text-lime-200 transition hover:bg-lime-400/20"
+            >
+              Cargar resultado
+            </button>
+          ) : null}
+          {['live', 'final'].includes(match.status) && (
+            <button
+              type="button"
+              onClick={() => setShowPredictions(true)}
+              className="rounded-lg border border-[var(--accent)]/60 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)] transition hover:bg-[var(--accent)]/20"
+            >
+              Ver Resultados
+            </button>
+          )}
+        </div>
       </div>
       <MatchPredictionsDialog
         match={match}
         open={showPredictions}
         onClose={() => setShowPredictions(false)}
       />
+      {onSaveLiveResult ? (
+        <LiveResultDialog
+          match={match}
+          home={home}
+          away={away}
+          open={showLiveResult}
+          onClose={() => setShowLiveResult(false)}
+          onSave={onSaveLiveResult}
+        />
+      ) : null}
     </Card>
   )
 }

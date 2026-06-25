@@ -21,7 +21,15 @@ export const Route = createFileRoute('/')({
 })
 
 function HomePage() {
-  const { authResolved, currentUser, state, leaderboard, updateFavoriteTeam, refreshLive } = useApp()
+  const {
+    authResolved,
+    currentUser,
+    state,
+    leaderboard,
+    updateFavoriteTeam,
+    refreshLive,
+    setMatchResult,
+  } = useApp()
   const defaultTeamId = TEAMS[0]?.id ?? 'mex'
   const [selectedTeamId, setSelectedTeamId] = useState(currentUser?.teamId ?? defaultTeamId)
   const [savingFavorite, setSavingFavorite] = useState(false)
@@ -170,6 +178,8 @@ function HomePage() {
                     phaseLabel={item.phaseLabel}
                     prediction={item.prediction}
                     points={matchPoints[item.match.id]}
+                    canEditLiveResult={currentUser.isAdmin}
+                    onSaveLiveResult={setMatchResult}
                   />
                 ))}
               </div>
@@ -199,6 +209,8 @@ function HomePage() {
                     phaseLabel={phaseLabel(match.phase)}
                     prediction={predictionMap.get(match.id) ?? null}
                     points={matchPoints[match.id]}
+                    canEditLiveResult={currentUser.isAdmin}
+                    onSaveLiveResult={setMatchResult}
                   />
                 )
               })}
