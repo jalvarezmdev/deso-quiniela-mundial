@@ -96,13 +96,22 @@ describe('getMatchPoints', () => {
     ).toBe(0)
   })
 
-  it('returns 3 points for exact score in knockout (ignores qualified team)', () => {
+  it('returns 3 points for exact non-draw knockout score with wrong qualified team', () => {
     expect(
       getMatchPoints(
         createMatch({ phase: 'roundOf16', homeGoals: 2, awayGoals: 0, qualifiedTeamId: 'mex' }),
         createPrediction({ phase: 'roundOf16', homeGoals: 2, awayGoals: 0, predictedQualifiedTeamId: 'zaf' }),
       ),
     ).toBe(3)
+  })
+
+  it('returns 4 points for exact knockout draw and correct qualified team', () => {
+    expect(
+      getMatchPoints(
+        createMatch({ phase: 'roundOf16', homeGoals: 3, awayGoals: 3, qualifiedTeamId: 'mex' }),
+        createPrediction({ phase: 'roundOf16', homeGoals: 3, awayGoals: 3, predictedQualifiedTeamId: 'mex' }),
+      ),
+    ).toBe(4)
   })
 
   it('returns points for live matches too', () => {

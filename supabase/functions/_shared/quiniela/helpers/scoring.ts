@@ -14,29 +14,43 @@ type ScoringInput = {
  * Compute points for a single match prediction.
  * - Exact score: 3 points
  * - Group phase result sign match: 1 point
- * - Knockout qualified team match: 1 point
+ * - Knockout qualified team match: 1 point, additive on drawn scores
  * - Wrong: 0 points
  */
 export function computeMatchPoints(input: ScoringInput): number {
-  // Exact score match: 3 points
-  if (
+  const exactScore =
     input.homeGoals === input.predictedHomeGoals &&
-    input.awayGoals === input.predictedAwayGoals
-  ) {
+    input.awayGoals === input.predictedAwayGoals;
+
+  if (input.phase !== "groups") {
+    const actualDraw = resultSign(input.homeGoals, input.awayGoals) === 0;
+    const predictedDraw =
+      resultSign(input.predictedHomeGoals, input.predictedAwayGoals) === 0;
+    const correctQualifiedTeam =
+      input.qualifiedTeamId !== null &&
+      input.qualifiedTeamId === input.predictedQualifiedTeamId;
+
+    if (actualDraw) {
+      const scorePoints = exactScore ? 3 : predictedDraw ? 1 : 0;
+      const qualifierPoints = correctQualifiedTeam ? 1 : 0;
+      return scorePoints + qualifierPoints;
+    }
+
+    if (exactScore) return 3;
+    return correctQualifiedTeam ? 1 : 0;
+  }
+
+  // Exact score match: 3 points
+  if (exactScore) {
     return 3;
   }
 
   // Group phase: result sign match = 1 point
-  if (input.phase === "groups") {
-    const actualSign = Math.sign(input.homeGoals - input.awayGoals);
-    const predictedSign = Math.sign(
-      input.predictedHomeGoals - input.predictedAwayGoals
-    );
-    return actualSign === predictedSign ? 1 : 0;
-  }
-
-  // Knockout phase: qualified team match = 1 point
-  return input.qualifiedTeamId === input.predictedQualifiedTeamId ? 1 : 0;
+  const actualSign = Math.sign(input.homeGoals - input.awayGoals);
+  const predictedSign = Math.sign(
+    input.predictedHomeGoals - input.predictedAwayGoals
+  );
+  return actualSign === predictedSign ? 1 : 0;
 }
 
 /**

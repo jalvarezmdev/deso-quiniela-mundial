@@ -7,6 +7,7 @@ Deno.test("leaderboard combines confirmed group points with knockout points with
   const users = [
     { id: "user-1", nickname: "Ana", team_id: "arg" },
     { id: "user-2", nickname: "Luis", team_id: "bra" },
+    { id: "user-3", nickname: "Juan", team_id: "mar" },
   ];
   const matches = [
     {
@@ -22,6 +23,13 @@ Deno.test("leaderboard combines confirmed group points with knockout points with
       home_goals: 1,
       away_goals: 1,
       qualified_team_id: "arg",
+    },
+    {
+      id: "ko-2",
+      phase: "roundOf16",
+      home_goals: 2,
+      away_goals: 2,
+      qualified_team_id: "mar",
     },
   ];
   const predictions = [
@@ -56,6 +64,14 @@ Deno.test("leaderboard combines confirmed group points with knockout points with
       home_goals: 0,
       away_goals: 0,
       predicted_qualified_team_id: "arg",
+    },
+    {
+      user_id: "user-3",
+      phase: "roundOf16",
+      match_id: "ko-2",
+      home_goals: 2,
+      away_goals: 2,
+      predicted_qualified_team_id: "mar",
     },
   ];
   const submissions = [
@@ -145,10 +161,18 @@ Deno.test("leaderboard combines confirmed group points with knockout points with
           firstConfirmedAt: "2026-06-10T20:00:00.000Z",
         },
         {
+          userId: "user-3",
+          nickname: "Juan",
+          teamId: "mar",
+          points: 4,
+          exactHits: 1,
+          firstConfirmedAt: null,
+        },
+        {
           userId: "user-2",
           nickname: "Luis",
           teamId: "bra",
-          points: 1,
+          points: 2,
           exactHits: 0,
           firstConfirmedAt: null,
         },
