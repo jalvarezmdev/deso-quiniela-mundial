@@ -103,9 +103,9 @@ Deno.test("list predictions for match includes zero and positive points", async 
     ok: true,
     data: {
       predictions: [
-        { nickname: "Asdrubal", homeGoals: 0, awayGoals: 2, points: 0 },
-        { nickname: "Juan", homeGoals: 2, awayGoals: 1, points: 3 },
-        { nickname: "Rene", homeGoals: 2, awayGoals: 1, points: 0 },
+        { nickname: "Asdrubal", homeGoals: 0, awayGoals: 2, predictedQualifiedTeamId: null, points: 0 },
+        { nickname: "Juan", homeGoals: 2, awayGoals: 1, predictedQualifiedTeamId: null, points: 3 },
+        { nickname: "Rene", homeGoals: 2, awayGoals: 1, predictedQualifiedTeamId: null, points: 0 },
       ],
     },
   });
@@ -197,7 +197,75 @@ Deno.test("list predictions for knockout match scores users without phase submis
     ok: true,
     data: {
       predictions: [
-        { nickname: "Ana", homeGoals: 0, awayGoals: 0, points: 1 },
+        { nickname: "Ana", homeGoals: 0, awayGoals: 0, predictedQualifiedTeamId: "arg", points: 2 },
+      ],
+    },
+  });
+});
+
+Deno.test("list predictions for knockout exact draw includes qualified team and 4 points", async () => {
+  const supabase = {
+    from(table: string) {
+      if (table === "matches") {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  maybeSingle: () => Promise.resolve({
+                    data: {
+                      phase: "roundOf16",
+                      home_goals: 2,
+                      away_goals: 2,
+                      qualified_team_id: "mar",
+                    },
+                    error: null,
+                  }),
+                };
+              },
+            };
+          },
+        };
+      }
+
+      return {
+        select() {
+          return {
+            eq: () => Promise.resolve({
+              data: [
+                {
+                  user_id: "user-1",
+                  home_goals: 2,
+                  away_goals: 2,
+                  predicted_qualified_team_id: "mar",
+                  profiles: { nickname: "Juan Alvarez" },
+                },
+              ],
+              error: null,
+            }),
+          };
+        },
+      };
+    },
+  };
+
+  const response = await handleListPredictionsForMatch({
+    supabase: supabase as never,
+    payload: { matchId: "ned-mar" },
+    me: {} as never,
+  });
+
+  assertEquals(await response.json(), {
+    ok: true,
+    data: {
+      predictions: [
+        {
+          nickname: "Juan Alvarez",
+          homeGoals: 2,
+          awayGoals: 2,
+          predictedQualifiedTeamId: "mar",
+          points: 4,
+        },
       ],
     },
   });

@@ -31,19 +31,25 @@ export function computeMatchPoints(
     outcome.homeGoals === prediction.homeGoals &&
     outcome.awayGoals === prediction.awayGoals
 
-  if (exactScore) {
-    return 3
-  }
-
   if (isKnockoutPhase(outcome.phase)) {
-    if (
-      outcome.qualifiedTeamId &&
+    const actualDraw = resultSign(outcome.homeGoals, outcome.awayGoals) === 0
+    const predictedDraw = resultSign(prediction.homeGoals, prediction.awayGoals) === 0
+    const correctQualifiedTeam =
+      Boolean(outcome.qualifiedTeamId) &&
       prediction.predictedQualifiedTeamId === outcome.qualifiedTeamId
-    ) {
-      return 1
+
+    if (actualDraw) {
+      const scorePoints = exactScore ? 3 : predictedDraw ? 1 : 0
+      const qualifierPoints = correctQualifiedTeam ? 1 : 0
+      return scorePoints + qualifierPoints
     }
 
-    return 0
+    if (exactScore) return 3
+    return correctQualifiedTeam ? 1 : 0
+  }
+
+  if (exactScore) {
+    return 3
   }
 
   const expectedSign = resultSign(outcome.homeGoals, outcome.awayGoals)

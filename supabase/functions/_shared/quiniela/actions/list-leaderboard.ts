@@ -104,7 +104,10 @@ export async function handleListLeaderboard(
     })
 
     row.points += gained
-    if (gained === 3) {
+    if (
+      prediction.home_goals === match.home_goals &&
+      prediction.away_goals === match.away_goals
+    ) {
       row.exactHits += 1
     }
   }

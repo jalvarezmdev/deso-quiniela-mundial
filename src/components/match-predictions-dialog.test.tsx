@@ -54,8 +54,8 @@ describe('MatchPredictionsDialog', () => {
       ok: true,
       data: {
         predictions: [
-          { nickname: 'Asdrubal', homeGoals: 0, awayGoals: 2, points: 0 },
-          { nickname: 'Juan', homeGoals: 2, awayGoals: 1, points: 3 },
+          { nickname: 'Asdrubal', homeGoals: 0, awayGoals: 2, predictedQualifiedTeamId: null, points: 0 },
+          { nickname: 'Juan', homeGoals: 2, awayGoals: 1, predictedQualifiedTeamId: null, points: 3 },
         ],
       },
     })
@@ -67,5 +67,42 @@ describe('MatchPredictionsDialog', () => {
 
     expect(zeroPoints.nextElementSibling?.textContent).toBe('Asdrubal')
     expect(threePoints.nextElementSibling?.textContent).toBe('Juan')
+  })
+
+  it('shows knockout qualified team prediction with 4 points', async () => {
+    vi.mocked(invokeAuthenticatedQuinielasAction).mockResolvedValueOnce({
+      ok: true,
+      data: {
+        predictions: [
+          {
+            nickname: 'Juan Alvarez',
+            homeGoals: 2,
+            awayGoals: 2,
+            predictedQualifiedTeamId: 'mar',
+            points: 4,
+          },
+        ],
+      },
+    })
+
+    render(
+      <MatchPredictionsDialog
+        match={{
+          ...match,
+          phase: 'roundOf16',
+          homeTeamId: 'ned',
+          awayTeamId: 'mar',
+          homeGoals: 2,
+          awayGoals: 2,
+          qualifiedTeamId: 'mar',
+        }}
+        open={true}
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByText('+4 PTS')).toBeTruthy()
+    expect(screen.getByText('Juan Alvarez')).toBeTruthy()
+    expect(screen.getByText(/avanza/i).textContent).toContain('🇲🇦')
   })
 })

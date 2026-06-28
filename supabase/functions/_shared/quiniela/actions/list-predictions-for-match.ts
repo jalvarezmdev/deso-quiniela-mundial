@@ -15,6 +15,7 @@ type PredictionWithNickname = {
   nickname: string;
   homeGoals: number;
   awayGoals: number;
+  predictedQualifiedTeamId: string | null;
   points: number;
 };
 
@@ -84,6 +85,7 @@ export async function handleListPredictionsForMatch(
       nickname: row.profiles?.nickname ?? "Sin nombre",
       homeGoals: row.home_goals,
       awayGoals: row.away_goals,
+      predictedQualifiedTeamId: row.predicted_qualified_team_id,
       points: requiresConfirmation && !confirmedUserIds.has(row.user_id)
         ? 0
         : computeMatchPoints({
