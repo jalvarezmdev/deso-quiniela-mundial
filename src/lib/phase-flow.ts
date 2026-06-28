@@ -23,6 +23,15 @@ function getPhaseFirstKickoff(matches: Match[], phase: PhaseKey): Date {
   return new Date(sorted[0]?.kickoffAt ?? nowIso())
 }
 
+function getPhaseLastKickoff(matches: Match[], phase: PhaseKey): Date {
+  const phaseMatches = getMatchesByPhase(matches, phase)
+  const sorted = [...phaseMatches].sort(
+    (a, b) => new Date(b.kickoffAt).getTime() - new Date(a.kickoffAt).getTime(),
+  )
+
+  return new Date(sorted[0]?.kickoffAt ?? nowIso())
+}
+
 function getPreviousPhase(phase: PhaseKey): PhaseKey | null {
   const index = findPhaseIndex(phase)
   if (index <= 0) return null
@@ -39,7 +48,9 @@ export function getPhaseWindow(state: AppState, phase: PhaseKey): { opensAt: Dat
   const override = state.windowOverrides.find((item) => item.phase === phase)
   const closesAt = override
     ? new Date(override.closesAt)
-    : getPhaseFirstKickoff(state.matches, phase)
+    : phase === 'groups'
+      ? getPhaseFirstKickoff(state.matches, phase)
+      : getPhaseLastKickoff(state.matches, phase)
 
   if (override) {
     return {

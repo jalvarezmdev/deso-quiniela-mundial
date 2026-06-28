@@ -242,6 +242,8 @@ function QuinielaPage() {
     })
   }, [displayedPhase, roundFilter, matches]);
 
+  const phaseConfirmed = isPhaseConfirmed(displayedPhase);
+
   const visibleFlowMatches = useMemo(
     () =>
       visibleRoundGroups
@@ -252,10 +254,10 @@ function QuinielaPage() {
           canPredictMatch(
             match,
             Boolean(currentUser?.isAdmin),
-            isPhaseConfirmed(displayedPhase),
+            phaseConfirmed,
           ),
         ),
-    [visibleRoundGroups, currentUser?.isAdmin, isPhaseConfirmed, displayedPhase],
+    [visibleRoundGroups, currentUser?.isAdmin, phaseConfirmed],
   );
 
   const currentUserPhasePredictions = useMemo(
@@ -279,7 +281,8 @@ function QuinielaPage() {
   );
 
   const editable = canEditPhase(displayedPhase);
-  const hasNotConfirmed = !isPhaseConfirmed(displayedPhase) || Boolean(currentUser?.isAdmin);
+  const showConfirmPhase = displayedPhase === "groups";
+  const hasNotConfirmed = !phaseConfirmed || Boolean(currentUser?.isAdmin);
   const confirmablePhaseMatches = currentUser?.isAdmin
     ? matches
     : matches.filter(m => m.status === 'scheduled');
@@ -420,14 +423,14 @@ function QuinielaPage() {
                   Pendiente
                 </Badge>
               )}
-              {prediction && isPhaseConfirmed(displayedPhase) ? null : (
+              {prediction && phaseConfirmed ? null : (
                 <Button
                   onClick={() => openModal(match)}
                   disabled={
                     !canPredictMatch(
                       match,
                       Boolean(currentUser?.isAdmin),
-                      isPhaseConfirmed(displayedPhase),
+                      phaseConfirmed,
                     )
                   }
                 >
@@ -484,14 +487,14 @@ function QuinielaPage() {
             </Badge>
           )}
 
-          {prediction && isPhaseConfirmed(displayedPhase) ? null : (
+          {prediction && phaseConfirmed ? null : (
             <Button
               onClick={() => openModal(match)}
               disabled={
                 !canPredictMatch(
                   match,
                   Boolean(currentUser?.isAdmin),
-                  isPhaseConfirmed(displayedPhase),
+                  phaseConfirmed,
                 )
               }
             >
@@ -596,7 +599,7 @@ function QuinielaPage() {
                 </p>
                 <p className="mt-1 text-sm text-zinc-300">
                   Estado:{" "}
-                  {isPhaseConfirmed(displayedPhase)
+                  {phaseConfirmed
                     ? "confirmada"
                     : isPhaseLockedAtNow(displayedPhase)
                       ? "cerrada"
@@ -781,18 +784,20 @@ function QuinielaPage() {
             <QuinielaMatchFlow />
           </QuinielaMatchFlowProvider>
 
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--surface-0)]/95 px-4 py-3 backdrop-blur mb-16 md:mb-0">
-            <QuinielaProgress
-              savedMatchesCount={savedMatchesCount}
-              totalMatchesCount={totalMatchesCount}
-              missingFixtureCount={knockoutViews.missingCount}
-              missingPredictionCount={missingPredictionCount}
-              savedProgress={savedProgress}
-              editable={editable}
-              canConfirmPhase={canConfirmPhase}
-              onConfirmPhase={() => void onConfirmPhase()}
-            />
-          </div>
+          {showConfirmPhase ? (
+            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--surface-0)]/95 px-4 py-3 backdrop-blur mb-16 md:mb-0">
+              <QuinielaProgress
+                savedMatchesCount={savedMatchesCount}
+                totalMatchesCount={totalMatchesCount}
+                missingFixtureCount={knockoutViews.missingCount}
+                missingPredictionCount={missingPredictionCount}
+                savedProgress={savedProgress}
+                editable={editable}
+                canConfirmPhase={canConfirmPhase}
+                onConfirmPhase={() => void onConfirmPhase()}
+              />
+            </div>
+          ) : null}
 
           {currentUser.isAdmin ? (
             <QuinielaTestPreviewControls
