@@ -35,6 +35,7 @@ import {
   isPhaseEditable,
   isPhaseLocked,
 } from '#/lib/phase-flow'
+import { isMatchLocked } from '#/lib/match-lock'
 import {
   type AppState,
   type LeaderboardRow,
@@ -64,6 +65,10 @@ function countNicknameCharacters(nickname: string): number {
 
 function wasPhaseConfirmed(submissions: PhaseSubmission[], userId: string, phase: PhaseKey): boolean {
   return submissions.some((submission) => submission.userId === userId && submission.phase === phase)
+}
+
+function isKnockoutPhase(phase: PhaseKey): boolean {
+  return phase !== 'groups'
 }
 
 function buildInitialState(): AppState {
@@ -648,7 +653,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return false
     }
 
-    if (wasPhaseConfirmed(state.submissions, currentUser.id, phase)) {
+    if (!isKnockoutPhase(phase) && wasPhaseConfirmed(state.submissions, currentUser.id, phase)) {
       return false
     }
 
@@ -952,6 +957,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const isPhaseConfirmed = useCallback((phase: PhaseKey) => {
     if (!currentUser) return false
+    if (isKnockoutPhase(phase)) return false
     return wasPhaseConfirmed(state.submissions, currentUser.id, phase)
   }, [currentUser, state.submissions])
 
@@ -970,7 +976,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { ok: false as const, message: 'Partido no encontrado.' }
     }
 
-    if (match.status !== 'scheduled') {
+    if (isMatchLocked(match)) {
       return { ok: false as const, message: 'No se puede modificar el pronostico: el partido esta en curso o finalizado.' }
     }
 

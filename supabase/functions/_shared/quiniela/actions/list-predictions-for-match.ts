@@ -48,14 +48,17 @@ export async function handleListPredictionsForMatch(
     const homeGoals = match.home_goals;
     const awayGoals = match.away_goals;
 
-    const { data: config, error: configError } = await ctx.supabase
-      .from("site_config")
-      .select("value")
-      .eq("key", "scoring_mode")
-      .maybeSingle();
+    let requiresConfirmation = false;
+    if (match.phase === "groups") {
+      const { data: config, error: configError } = await ctx.supabase
+        .from("site_config")
+        .select("value")
+        .eq("key", "scoring_mode")
+        .maybeSingle();
 
-    if (configError) return handleDbError(configError);
-    const requiresConfirmation = config?.value !== "per_match";
+      if (configError) return handleDbError(configError);
+      requiresConfirmation = config?.value !== "per_match";
+    }
 
     const { data: submissions, error: submissionsError } = requiresConfirmation
       ? await ctx.supabase

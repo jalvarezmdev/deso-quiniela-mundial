@@ -77,4 +77,19 @@ describe('phase flow', () => {
     expect(getActivePhase(state, now)).toBe('final')
     expect(isPhaseEditable(state, 'final', now)).toBe(false)
   })
+
+  it('keeps a knockout phase active while it still has a future scheduled match', () => {
+    const state = createState({ groups: 'final' })
+    state.matches = [
+      createMatch('groups', '2026-06-11T17:00:00.000Z', 'final'),
+      createMatch('roundOf16', '2026-06-28T19:00:00.000Z', 'final'),
+      createMatch('roundOf16', '2026-06-29T20:30:00.000Z', 'scheduled'),
+      createMatch('roundOf8', '2026-07-04T17:00:00.000Z', 'scheduled'),
+    ]
+
+    const now = new Date('2026-06-29T12:00:00.000Z')
+
+    expect(isPhaseEditable(state, 'roundOf16', now)).toBe(true)
+    expect(getActivePhase(state, now)).toBe('roundOf16')
+  })
 })

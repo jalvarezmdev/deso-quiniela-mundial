@@ -8,6 +8,7 @@ type QuinielaProgressProps = {
   savedProgress: number;
   editable: boolean;
   canConfirmPhase: boolean;
+  showConfirmPhase?: boolean;
   onConfirmPhase: () => void;
 };
 
@@ -19,8 +20,13 @@ export function QuinielaProgress({
   savedProgress,
   editable,
   canConfirmPhase,
+  showConfirmPhase = true,
   onConfirmPhase,
 }: QuinielaProgressProps) {
+  if (!showConfirmPhase) {
+    return null;
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 md:flex-row md:items-center">
       <div className="w-full md:flex-1">

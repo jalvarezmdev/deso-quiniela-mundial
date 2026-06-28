@@ -32,6 +32,26 @@ function teamCode(teamId: string): string {
   return teamId.toUpperCase();
 }
 
+function getScoreWinnerTeamId({
+  homeGoals,
+  awayGoals,
+  homeTeamId,
+  awayTeamId,
+}: {
+  homeGoals: string;
+  awayGoals: string;
+  homeTeamId: string;
+  awayTeamId: string;
+}): string | null {
+  const home = Number(homeGoals);
+  const away = Number(awayGoals);
+
+  if (!Number.isFinite(home) || !Number.isFinite(away)) return null;
+  if (home > away) return homeTeamId;
+  if (away > home) return awayTeamId;
+  return null;
+}
+
 export function MatchScoreEntry({
   match,
   prediction,
@@ -49,6 +69,15 @@ export function MatchScoreEntry({
   const away = getTeam(match.awayTeamId);
   const requiresQualifiedTeam = isKnockout(match.phase);
   const locked = isMatchLocked(match);
+  const scoreWinnerTeamId = requiresQualifiedTeam
+    ? getScoreWinnerTeamId({
+      homeGoals,
+      awayGoals,
+      homeTeamId: match.homeTeamId,
+      awayTeamId: match.awayTeamId,
+    })
+    : null;
+  const selectedQualifiedTeamId = scoreWinnerTeamId ?? qualifiedTeamId;
 
   useEffect(() => {
     setHomeGoals(String(prediction?.homeGoals ?? 0));
@@ -66,7 +95,7 @@ export function MatchScoreEntry({
       homeGoals: Number(homeGoals),
       awayGoals: Number(awayGoals),
       predictedQualifiedTeamId: requiresQualifiedTeam
-        ? qualifiedTeamId || null
+        ? selectedQualifiedTeamId || null
         : null,
     });
   }
@@ -134,10 +163,10 @@ export function MatchScoreEntry({
           <Label htmlFor={`qualified-${match.id}`}>Clasificado final</Label>
           <select
             id={`qualified-${match.id}`}
-            value={qualifiedTeamId}
+            value={selectedQualifiedTeamId}
             onChange={(event) => setQualifiedTeamId(event.target.value)}
             className="h-10 w-full rounded-md border border-[--line] bg-[var(--secondary)] px-3 text-sm"
-            disabled={isSaving || locked}
+            disabled={isSaving || locked || Boolean(scoreWinnerTeamId)}
             required
           >
             <option value="">Selecciona clasificado</option>

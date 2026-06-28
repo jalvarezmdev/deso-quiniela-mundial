@@ -5,6 +5,7 @@ import { LiveResultDialog, type LiveResultInput, type LiveResultSaveResult } fro
 import { MatchPredictionsDialog } from '#/components/match-predictions-dialog'
 import type { Match, Prediction, Team } from '#/lib/types'
 import { toVenShortDateLabel, toVenShortTimeLabel } from '#/lib/time'
+import { TEAMS } from '#/lib/teams'
 
 function statusLabel(status: Match['status']) {
   if (status === 'final') return 'FT'
@@ -49,6 +50,7 @@ export function MatchCard({
 
   const showPredictionRow = prediction !== undefined
   const showLiveResultButton = canEditLiveResult && match.status === 'live' && onSaveLiveResult
+  const qualifiedCountryMetadata = prediction ? TEAMS.find((team) => team.id === prediction.predictedQualifiedTeamId) : null;
 
   return (
     <Card className={cardClassName}>
@@ -96,11 +98,22 @@ export function MatchCard({
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         {showPredictionRow ? (
           prediction ? (
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/60 bg-[var(--accent)]/5 px-3 py-1">
-              <span className="text-xs font-bold uppercase text-[var(--accent)]">
-                Tu prediccion: {prediction.homeGoals}-{prediction.awayGoals}
-                {prediction.predictedQualifiedTeamId ? ' (avanza)' : ''}
-              </span>
+            <div className="inline-flex items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/60 bg-[var(--accent)]/5 px-3 py-1">
+                <span className="text-xs font-bold uppercase text-[var(--accent)]">
+                  Tu prediccion: {prediction.homeGoals}-{prediction.awayGoals}
+                </span>
+              </div>
+              <div className="uppercase text-sm font-bold">
+                {prediction.predictedQualifiedTeamId ? 
+                  (
+                   <span className='flex items-center gap-1 text-[var(--accent)] animate-pulse'>
+                    <Trophy size={12} />
+                    AVANZA <span className='text-lg'>{qualifiedCountryMetadata?.flag}</span>
+                   </span> 
+                  )
+                : ''}
+              </div>
             </div>
           ) : (
             <span className="text-xs text-zinc-500">Sin prediccion</span>
