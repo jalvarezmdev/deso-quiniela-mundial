@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAuth } from "#/components/layout/require-auth";
 import { PageShell } from "#/components/layout/page-shell";
 import { QuinielaProgress } from "#/components/layout/quiniela-progress";
@@ -8,6 +8,7 @@ import {
   MatchScoreEntry,
   type MatchScoreEntrySubmitInput,
 } from "#/components/quiniela/match-score-entry";
+import { MatchActionButton } from "#/components/quiniela/match-action-button";
 import { MatchDialogMotion } from "#/components/quiniela/match-dialog-motion";
 import { QuinielaMatchFlow } from "#/components/quiniela/quiniela-match-flow";
 import {
@@ -137,6 +138,9 @@ const KNOCKOUT_PHASES: KnockoutPhase[] = [
   "semifinals",
   "final",
 ];
+const MAX_LOCK_REFRESH_DELAY_MS = 60_000;
+const LOCKED_MATCH_MESSAGE =
+  "No se puede modificar el pronostico: el partido esta en curso o finalizado.";
 
 function isKnockoutPhase(phase: PhaseKey): phase is KnockoutPhase {
   return phase !== "groups";
@@ -174,6 +178,7 @@ function QuinielaPage() {
   const [countryFilter, setCountryFilter] = useState("");
   const [groupFilter, setGroupFilter] = useState("todos");
   const [showPreviewControls, setShowPreviewControls] = useState(false);
+  const [now, setNow] = useState(() => new Date());
   const [previewByPhase, setPreviewByPhase] = useState<
     Record<KnockoutPhase, boolean>
   >({
@@ -243,6 +248,16 @@ function QuinielaPage() {
   }, [displayedPhase, roundFilter, matches]);
 
   const phaseConfirmed = isPhaseConfirmed(displayedPhase);
+  const canEditMatch = useCallback(
+    (match: Match, at: Date = now) =>
+      canPredictMatch(
+        match,
+        Boolean(currentUser?.isAdmin),
+        phaseConfirmed,
+        at,
+      ),
+    [currentUser?.isAdmin, phaseConfirmed, now],
+  );
 
   const visibleFlowMatches = useMemo(
     () =>
@@ -251,13 +266,9 @@ function QuinielaPage() {
           roundGroup.groups.flatMap((group) => group.matches),
         )
         .filter((match) =>
-          canPredictMatch(
-            match,
-            Boolean(currentUser?.isAdmin),
-            phaseConfirmed,
-          ),
+          canEditMatch(match),
         ),
-    [visibleRoundGroups, currentUser?.isAdmin, phaseConfirmed],
+    [visibleRoundGroups, canEditMatch],
   );
 
   const currentUserPhasePredictions = useMemo(
@@ -315,11 +326,36 @@ function QuinielaPage() {
     setRoundFilter("all");
   }, [displayedPhase]);
 
+  useEffect(() => {
+    const currentTime = now.getTime();
+    const nextKickoffAt = matches
+      .map((match) => new Date(match.kickoffAt).getTime())
+      .filter((kickoffAt) => Number.isFinite(kickoffAt) && kickoffAt >= currentTime)
+      .sort((a, b) => a - b)[0];
+    if (nextKickoffAt === undefined) return undefined;
+
+    const delay = Math.min(
+      Math.max(nextKickoffAt - currentTime + 1, 0),
+      MAX_LOCK_REFRESH_DELAY_MS,
+    );
+
+    const timeoutId = window.setTimeout(() => {
+      setNow(new Date());
+    }, delay);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [matches, now]);
+
   if (!currentUser) {
     return null;
   }
 
   function openModal(match: Match) {
+    if (!canEditMatch(match, new Date())) {
+      toast.error(LOCKED_MATCH_MESSAGE);
+      return;
+    }
+
     setSelectedMatch(match);
   }
 
@@ -344,6 +380,10 @@ function QuinielaPage() {
 
   async function onSaveModalMatch(input: MatchScoreEntrySubmitInput) {
     if (!selectedMatch || isSavingMatch) return;
+    if (!canEditMatch(selectedMatch, new Date())) {
+      toast.error(LOCKED_MATCH_MESSAGE);
+      return;
+    }
 
     setIsSavingMatch(true);
 
@@ -423,20 +463,13 @@ function QuinielaPage() {
                   Pendiente
                 </Badge>
               )}
-              {prediction && phaseConfirmed ? null : (
-                <Button
-                  onClick={() => openModal(match)}
-                  disabled={
-                    !canPredictMatch(
-                      match,
-                      Boolean(currentUser?.isAdmin),
-                      phaseConfirmed,
-                    )
-                  }
-                >
-                  {prediction ? "Actualizar" : "Cargar"}
-                </Button>
-              )}
+              <MatchActionButton
+                match={match}
+                prediction={prediction}
+                canEdit={canEditMatch(match)}
+                phaseConfirmed={phaseConfirmed}
+                onOpen={openModal}
+              />
             </div>
           </div>
         </div>
@@ -487,20 +520,13 @@ function QuinielaPage() {
             </Badge>
           )}
 
-          {prediction && phaseConfirmed ? null : (
-            <Button
-              onClick={() => openModal(match)}
-              disabled={
-                !canPredictMatch(
-                  match,
-                  Boolean(currentUser?.isAdmin),
-                  phaseConfirmed,
-                )
-              }
-            >
-              {prediction ? "Actualizar" : "Cargar"}
-            </Button>
-          )}
+          <MatchActionButton
+            match={match}
+            prediction={prediction}
+            canEdit={canEditMatch(match)}
+            phaseConfirmed={phaseConfirmed}
+            onOpen={openModal}
+          />
         </div>
       </Card>
     );
@@ -525,7 +551,6 @@ function QuinielaPage() {
                   <FlaskConicalIcon className="h-3.5 w-3.5" />
                   Preview
                 </Badge>
-                <Button disabled>Actualizar</Button>
               </div>
             </div>
           </div>
@@ -558,9 +583,6 @@ function QuinielaPage() {
         </div>
         <div className="flex items-center gap-2">
           <Badge className="gap-1 bg-zinc-800 text-zinc-300">Por definir</Badge>
-          <Button disabled variant="outline">
-            No disponible
-          </Button>
         </div>
       </Card>
     );
@@ -772,6 +794,7 @@ function QuinielaPage() {
                     match={selectedMatch}
                     prediction={predictionForMatch(selectedMatch)}
                     isSaving={isSavingMatch}
+                    now={now}
                     onCancel={() => setSelectedMatch(null)}
                     onSubmit={(input) => void onSaveModalMatch(input)}
                   />
