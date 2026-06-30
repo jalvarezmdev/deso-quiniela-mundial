@@ -76,7 +76,7 @@ export function MatchPredictionsDialog({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-xl border border-zinc-700 bg-zinc-900 p-4"
+        className="flex max-h-[85dvh] w-full max-w-md flex-col rounded-xl border border-zinc-700 bg-zinc-900 p-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -92,7 +92,7 @@ export function MatchPredictionsDialog({
           </button>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
           {loading ? (
             <p className="text-sm text-zinc-400">Cargando predicciones...</p>
           ) : errorMessage ? (

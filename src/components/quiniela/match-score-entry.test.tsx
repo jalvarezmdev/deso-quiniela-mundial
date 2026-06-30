@@ -193,4 +193,28 @@ describe('MatchScoreEntry', () => {
       predictedQualifiedTeamId: 'arg',
     })
   })
+
+  it('blocks editing and submit when the current time reaches kickoff', () => {
+    const onSubmit = vi.fn()
+    render(
+      <MatchScoreEntry
+        match={createMatch({ kickoffAt: '2026-06-29T19:00:00.000Z' })}
+        prediction={createPrediction()}
+        isSaving={false}
+        now={new Date('2026-06-29T19:00:00.000Z')}
+        onCancel={() => undefined}
+        onSubmit={onSubmit}
+      />,
+    )
+
+    const homeGoalsInput = screen.getByLabelText(/mex/i) as HTMLInputElement
+    const awayGoalsInput = screen.getByLabelText(/zaf/i) as HTMLInputElement
+
+    expect(homeGoalsInput.disabled).toBe(true)
+    expect(awayGoalsInput.disabled).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
 })

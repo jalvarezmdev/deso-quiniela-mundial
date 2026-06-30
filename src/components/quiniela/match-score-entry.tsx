@@ -18,6 +18,7 @@ type MatchScoreEntryProps = {
   match: Match;
   prediction: Prediction | null;
   isSaving: boolean;
+  now?: Date;
   cancelLabel?: string;
   submitLabel?: string;
   onCancel: () => void;
@@ -56,6 +57,7 @@ export function MatchScoreEntry({
   match,
   prediction,
   isSaving,
+  now,
   cancelLabel = "Cancelar",
   submitLabel = "Guardar",
   onCancel,
@@ -68,7 +70,8 @@ export function MatchScoreEntry({
   const home = getTeam(match.homeTeamId);
   const away = getTeam(match.awayTeamId);
   const requiresQualifiedTeam = isKnockout(match.phase);
-  const locked = isMatchLocked(match);
+  const locked = isMatchLocked(match, now);
+  const formDisabled = isSaving || locked;
   const scoreWinnerTeamId = requiresQualifiedTeam
     ? getScoreWinnerTeamId({
       homeGoals,
@@ -86,11 +89,15 @@ export function MatchScoreEntry({
   }, [match.id, prediction]);
 
   useEffect(() => {
-    homeGoalsInputRef.current?.focus();
-  }, [match.id]);
+    if (!locked) {
+      homeGoalsInputRef.current?.focus();
+    }
+  }, [locked, match.id]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (locked) return;
+
     onSubmit({
       homeGoals: Number(homeGoals),
       awayGoals: Number(awayGoals),
@@ -132,7 +139,7 @@ export function MatchScoreEntry({
             value={homeGoals}
             onChange={(event) => setHomeGoals(event.target.value)}
             className="h-28 rounded-xl border-2 text-center text-6xl font-black tabular-nums tracking-normal text-[var(--accent)] md:h-32 md:text-7xl"
-            disabled={isSaving || locked}
+            disabled={formDisabled}
             required
           />
         </div>
@@ -152,7 +159,7 @@ export function MatchScoreEntry({
             value={awayGoals}
             onChange={(event) => setAwayGoals(event.target.value)}
             className="h-28 rounded-xl border-2 text-center text-6xl font-black tabular-nums tracking-normal text-[var(--accent)] md:h-32 md:text-7xl"
-            disabled={isSaving || locked}
+            disabled={formDisabled}
             required
           />
         </div>
@@ -166,7 +173,7 @@ export function MatchScoreEntry({
             value={selectedQualifiedTeamId}
             onChange={(event) => setQualifiedTeamId(event.target.value)}
             className="h-10 w-full rounded-md border border-[--line] bg-[var(--secondary)] px-3 text-sm"
-            disabled={isSaving || locked || Boolean(scoreWinnerTeamId)}
+            disabled={formDisabled || Boolean(scoreWinnerTeamId)}
             required
           >
             <option value="">Selecciona clasificado</option>
@@ -189,7 +196,7 @@ export function MatchScoreEntry({
         >
           {cancelLabel}
         </Button>
-        <Button type="submit" disabled={isSaving || locked}>
+        <Button type="submit" disabled={formDisabled}>
           {isSaving ? (
             <>
               <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
