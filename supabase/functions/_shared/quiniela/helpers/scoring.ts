@@ -1,5 +1,7 @@
 // supabase/functions/_shared/quiniela/helpers/scoring.ts
 
+import { PREDICTIONS_QUERY_LIMIT } from './quinielas-helpers.ts'
+
 type ScoringInput = {
   phase: string;
   homeGoals: number;
@@ -86,7 +88,8 @@ export async function computeAndStoreMatchPoints(
   const { data: predictions } = await supabase
     .from("predictions")
     .select("user_id, home_goals, away_goals, predicted_qualified_team_id")
-    .eq("match_id", match.matchId);
+    .eq("match_id", match.matchId)
+    .limit(PREDICTIONS_QUERY_LIMIT);
 
   if (!predictions?.length) return;
 

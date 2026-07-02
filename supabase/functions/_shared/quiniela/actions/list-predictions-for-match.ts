@@ -5,6 +5,7 @@ import {
   jsonError,
   jsonOk,
   parseId,
+  PREDICTIONS_QUERY_LIMIT,
   type MatchesRow,
   type PhaseSubmissionsRow,
   type PredictionsRow,
@@ -77,7 +78,8 @@ export async function handleListPredictionsForMatch(
     const { data, error } = await ctx.supabase
       .from("predictions")
       .select("user_id, home_goals, away_goals, predicted_qualified_team_id, profiles(nickname)")
-      .eq("match_id", matchId);
+      .eq("match_id", matchId)
+      .limit(PREDICTIONS_QUERY_LIMIT);
 
     if (error) return handleDbError(error);
 
