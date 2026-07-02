@@ -19,9 +19,29 @@ type LeaderboardRpcRow = {
   first_confirmed_at: string | null
 }
 
+// --- Cache ---
+
+const CACHE_TTL_MS = 30_000 // 30 seconds
+
+let cached: LeaderboardRow[] | null = null
+let cachedAt = 0
+
+export function invalidateLeaderboardCache(): void {
+  cached = null
+  cachedAt = 0
+}
+
+// --- Handler ---
+
 export async function handleListLeaderboard(
   ctx: AuthenticatedActionContext,
 ): Promise<Response> {
+  const now = Date.now()
+
+  if (cached !== null && now - cachedAt < CACHE_TTL_MS) {
+    return jsonOk({ leaderboard: cached })
+  }
+
   const { data, error } = await ctx.supabase.rpc('compute_leaderboard')
 
   if (error) return handleDbError(error)
@@ -34,6 +54,9 @@ export async function handleListLeaderboard(
     exactHits: row.exact_hits,
     firstConfirmedAt: row.first_confirmed_at,
   }))
+
+  cached = leaderboard
+  cachedAt = now
 
   return jsonOk({ leaderboard })
 }

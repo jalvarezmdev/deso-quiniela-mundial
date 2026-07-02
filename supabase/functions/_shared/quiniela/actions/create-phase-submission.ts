@@ -14,6 +14,7 @@ import {
   getMissingFixtureCount,
   getMissingPredictionMatchIds,
 } from "../helpers/phase-submission-completion.ts";
+import { invalidateLeaderboardCache } from "./list-leaderboard.ts";
 
 export async function handleCreatePhaseSubmission(
   ctx: AuthenticatedActionContext,
@@ -111,6 +112,7 @@ export async function handleCreatePhaseSubmission(
 
     if (error || !data) return handleDbError(error);
 
+    invalidateLeaderboardCache();
     return jsonOk({ submission: toPhaseSubmissionDTO(data) }, 201);
   } catch (error) {
     if (isValidationError(error)) {
