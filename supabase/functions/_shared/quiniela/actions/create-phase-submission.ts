@@ -6,6 +6,7 @@ import {
   jsonError,
   jsonOk,
   parsePhaseKey,
+  PREDICTIONS_QUERY_LIMIT,
   type PhaseSubmissionsRow,
   toPhaseSubmissionDTO,
 } from "../helpers/quinielas-helpers.ts";
@@ -75,7 +76,8 @@ export async function handleCreatePhaseSubmission(
       .from("predictions")
       .select("match_id")
       .eq("user_id", ctx.me.id)
-      .eq("phase", phase);
+      .eq("phase", phase)
+      .limit(PREDICTIONS_QUERY_LIMIT);
 
     if (predictionsError) return handleDbError(predictionsError);
 

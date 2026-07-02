@@ -5,6 +5,8 @@ import {
   jsonError,
   jsonOk,
   parseId,
+  parseLimit,
+  parseOffset,
   parsePhaseKey,
   type PredictionsRow,
   toPredictionDTO,
@@ -20,21 +22,24 @@ export async function handleListPredictionsAdmin(
     const userId = ctx.payload.userId === undefined
       ? null
       : parseId(ctx.payload.userId, "userId");
+    const limit = parseLimit(ctx.payload.limit);
+    const offset = parseOffset(ctx.payload.offset);
 
     let query = ctx.supabase
       .from("predictions")
-      .select("*")
-      .order("updated_at", { ascending: false });
+      .select("*", { count: "exact" })
+      .order("updated_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (phase) query = query.eq("phase", phase);
     if (userId) query = query.eq("user_id", userId);
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) return handleDbError(error);
 
     const predictions = (data as PredictionsRow[]).map(toPredictionDTO);
-    return jsonOk({ predictions });
+    return jsonOk({ predictions, total: count ?? 0, limit, offset });
   } catch (error) {
     if (isValidationError(error)) {
       return jsonError("VALIDATION_ERROR", error.message, 400);

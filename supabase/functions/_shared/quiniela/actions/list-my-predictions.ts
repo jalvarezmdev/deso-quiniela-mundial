@@ -5,6 +5,7 @@ import {
   jsonError,
   jsonOk,
   parsePhaseKey,
+  PREDICTIONS_QUERY_LIMIT,
   type PredictionsRow,
   toPredictionDTO,
 } from "../helpers/quinielas-helpers.ts";
@@ -21,7 +22,8 @@ export async function handleListMyPredictions(
       .from("predictions")
       .select("*")
       .eq("user_id", ctx.me.id)
-      .order("updated_at", { ascending: false });
+      .order("updated_at", { ascending: false })
+      .limit(PREDICTIONS_QUERY_LIMIT);
 
     if (phase) {
       query = query.eq("phase", phase);

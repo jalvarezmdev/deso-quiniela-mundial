@@ -246,6 +246,12 @@ export function parseIsoDateString(value: unknown): string {
   return parsed.toISOString();
 }
 
+/**
+ * Hard limit for bulk predictions queries (leaderboard, admin, etc.).
+ * Covers all predictions across all users with headroom for growth.
+ */
+export const PREDICTIONS_QUERY_LIMIT = 5000;
+
 export function parseLimit(
   value: unknown,
   defaultValue = 100,
@@ -256,6 +262,14 @@ export function parseLimit(
     throw new ValidationError("Limite invalido.");
   }
   return Math.min(value, max);
+}
+
+export function parseOffset(value: unknown, defaultValue = 0): number {
+  if (value == null) return defaultValue;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+    throw new ValidationError("Offset invalido.");
+  }
+  return value;
 }
 
 export function toMatchDTO(row: MatchesRow): MatchDTO {
