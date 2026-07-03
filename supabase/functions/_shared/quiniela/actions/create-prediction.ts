@@ -14,6 +14,7 @@ import {
   parsePredictionWriteInput,
   validatePredictedQualifiedTeam,
 } from "../helpers/parse-prediction-inputs.ts";
+import { isMatchLocked } from "../helpers/match-lock.ts";
 
 export async function handleCreatePrediction(
   ctx: AuthenticatedActionContext,
@@ -40,7 +41,7 @@ export async function handleCreatePrediction(
       );
     }
 
-    if (match.status !== "scheduled") {
+    if (isMatchLocked(match, new Date())) {
       return jsonError(
         "CONFLICT",
         "No se puede modificar el pronostico: el partido esta en curso o finalizado.",
@@ -48,19 +49,21 @@ export async function handleCreatePrediction(
       );
     }
 
-    const phaseSubmitted = await hasPhaseSubmission({
-      supabase: ctx.supabase,
-      userId: ctx.me.id,
-      phase: input.phase,
-    });
+    if (input.phase === "groups") {
+      const phaseSubmitted = await hasPhaseSubmission({
+        supabase: ctx.supabase,
+        userId: ctx.me.id,
+        phase: input.phase,
+      });
 
-    if (phaseSubmitted instanceof Response) return phaseSubmitted;
-    if (phaseSubmitted) {
-      return jsonError(
-        "CONFLICT",
-        "La fase ya fue confirmada y no admite cambios.",
-        409,
-      );
+      if (phaseSubmitted instanceof Response) return phaseSubmitted;
+      if (phaseSubmitted) {
+        return jsonError(
+          "CONFLICT",
+          "La fase ya fue confirmada y no admite cambios.",
+          409,
+        );
+      }
     }
 
     validatePredictedQualifiedTeam({

@@ -6,8 +6,12 @@ import {
   isValidationError,
   jsonError,
   jsonOk,
+  type MatchesRow,
 } from "../helpers/quinielas-helpers.ts";
 import { parsePredictionLookup } from "../helpers/parse-prediction-inputs.ts";
+import { isMatchLocked } from "../helpers/match-lock.ts";
+
+type PredictionMatchRow = Pick<MatchesRow, "id" | "phase" | "kickoff_at" | "status">;
 
 export async function handleDeletePrediction(
   ctx: AuthenticatedActionContext,
@@ -15,23 +19,44 @@ export async function handleDeletePrediction(
   try {
     const lookup = parsePredictionLookup(ctx.payload);
 
-    const lockedError = await assertPhaseEditable({
-      supabase: ctx.supabase,
-      phase: lookup.phase,
-    });
-    if (lockedError) return lockedError;
+    const { data: match, error: matchError } = await ctx.supabase
+      .from("matches")
+      .select("id, phase, kickoff_at, status")
+      .eq("id", lookup.matchId)
+      .eq("phase", lookup.phase)
+      .is("deleted_at", null)
+      .maybeSingle<PredictionMatchRow>();
 
-    const phaseSubmitted = await hasPhaseSubmission({
-      supabase: ctx.supabase,
-      userId: ctx.me.id,
-      phase: lookup.phase,
-    });
+    if (matchError) return handleDbError(matchError);
+    if (!match) {
+      return jsonError("NOT_FOUND", "Partido no encontrado.", 404);
+    }
 
-    if (phaseSubmitted instanceof Response) return phaseSubmitted;
-    if (phaseSubmitted) {
+    if (lookup.phase === "groups") {
+      const lockedError = await assertPhaseEditable({
+        supabase: ctx.supabase,
+        phase: lookup.phase,
+      });
+      if (lockedError) return lockedError;
+
+      const phaseSubmitted = await hasPhaseSubmission({
+        supabase: ctx.supabase,
+        userId: ctx.me.id,
+        phase: lookup.phase,
+      });
+
+      if (phaseSubmitted instanceof Response) return phaseSubmitted;
+      if (phaseSubmitted) {
+        return jsonError(
+          "CONFLICT",
+          "La fase ya fue confirmada y no admite cambios.",
+          409,
+        );
+      }
+    } else if (isMatchLocked(match, new Date())) {
       return jsonError(
         "CONFLICT",
-        "La fase ya fue confirmada y no admite cambios.",
+        "No se puede modificar el pronostico: el partido esta en curso o finalizado.",
         409,
       );
     }

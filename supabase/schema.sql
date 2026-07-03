@@ -13,7 +13,9 @@ create table if not exists public.profiles (
   last_login_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint chk_profiles_nickname_length
+    check (char_length(nickname) <= 50)
 );
 
 create unique index if not exists ux_profiles_email_active

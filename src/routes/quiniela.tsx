@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAuth } from "#/components/layout/require-auth";
 import { PageShell } from "#/components/layout/page-shell";
 import { QuinielaProgress } from "#/components/layout/quiniela-progress";
@@ -8,6 +8,7 @@ import {
   MatchScoreEntry,
   type MatchScoreEntrySubmitInput,
 } from "#/components/quiniela/match-score-entry";
+import { MatchActionButton } from "#/components/quiniela/match-action-button";
 import { MatchDialogMotion } from "#/components/quiniela/match-dialog-motion";
 import { QuinielaMatchFlow } from "#/components/quiniela/quiniela-match-flow";
 import {
@@ -16,6 +17,7 @@ import {
 } from "#/components/quiniela/quiniela-match-flow-context";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
+import { Input } from "#/components/ui/input";
 import { Card } from "#/components/ui/card";
 import { useApp } from "#/context/app-context";
 import {
@@ -27,10 +29,8 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
-  getGroupMatchRoundMap,
   getGroupRounds,
   GROUP_ROUNDS,
-  groupMatchesByGroupName,
   type GroupRound,
 } from "#/lib/group-rounds";
 import { getTeam } from "#/lib/teams";
@@ -138,6 +138,9 @@ const KNOCKOUT_PHASES: KnockoutPhase[] = [
   "semifinals",
   "final",
 ];
+const MAX_LOCK_REFRESH_DELAY_MS = 60_000;
+const LOCKED_MATCH_MESSAGE =
+  "No se puede modificar el pronostico: el partido esta en curso o finalizado.";
 
 function isKnockoutPhase(phase: PhaseKey): phase is KnockoutPhase {
   return phase !== "groups";
@@ -172,7 +175,10 @@ function QuinielaPage() {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isSavingMatch, setIsSavingMatch] = useState(false);
   const [roundFilter, setRoundFilter] = useState<RoundFilter>("all");
+  const [countryFilter, setCountryFilter] = useState("");
+  const [groupFilter, setGroupFilter] = useState("todos");
   const [showPreviewControls, setShowPreviewControls] = useState(false);
+  const [now, setNow] = useState(() => new Date());
   const [previewByPhase, setPreviewByPhase] = useState<
     Record<KnockoutPhase, boolean>
   >({
@@ -187,12 +193,40 @@ function QuinielaPage() {
     () =>
       state.matches
         .filter((match) => match.phase === displayedPhase)
+        .filter((match) => {
+          const normalizedCountryFilter = countryFilter.trim().toLowerCase();
+          if (normalizedCountryFilter.length > 0) {
+            const home = getTeam(match.homeTeamId);
+            const away = getTeam(match.awayTeamId);
+            if (
+              !home.name.toLowerCase().includes(normalizedCountryFilter) &&
+              !away.name.toLowerCase().includes(normalizedCountryFilter)
+            ) {
+              return false;
+            }
+          }
+          if (groupFilter !== "todos") {
+            const normalizedGroup =
+              (match.groupName ?? "Sin grupo").trim() || "Sin grupo";
+            if (normalizedGroup !== groupFilter) return false;
+          }
+          return true;
+        })
         .sort(
           (a, b) =>
             new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime(),
         ),
-    [displayedPhase, state.matches],
+    [displayedPhase, state.matches, countryFilter, groupFilter],
   );
+
+  const allGroups = useMemo(() => {
+    const groupSet = new Set<string>();
+    for (const match of state.matches.filter((m) => m.phase === displayedPhase)) {
+      groupSet.add((match.groupName ?? "Sin grupo").trim() || "Sin grupo");
+    }
+    return [...groupSet].sort((a, b) => a.localeCompare(b));
+  }, [state.matches, displayedPhase]);
+
   const knockoutViews = useMemo(
     () =>
       buildKnockoutMatchViews(
@@ -213,6 +247,18 @@ function QuinielaPage() {
     })
   }, [displayedPhase, roundFilter, matches]);
 
+  const phaseConfirmed = isPhaseConfirmed(displayedPhase);
+  const canEditMatch = useCallback(
+    (match: Match, at: Date = now) =>
+      canPredictMatch(
+        match,
+        Boolean(currentUser?.isAdmin),
+        phaseConfirmed,
+        at,
+      ),
+    [currentUser?.isAdmin, phaseConfirmed, now],
+  );
+
   const visibleFlowMatches = useMemo(
     () =>
       visibleRoundGroups
@@ -220,13 +266,9 @@ function QuinielaPage() {
           roundGroup.groups.flatMap((group) => group.matches),
         )
         .filter((match) =>
-          canPredictMatch(
-            match,
-            Boolean(currentUser?.isAdmin),
-            isPhaseConfirmed(displayedPhase),
-          ),
+          canEditMatch(match),
         ),
-    [visibleRoundGroups, currentUser?.isAdmin, isPhaseConfirmed, displayedPhase],
+    [visibleRoundGroups, canEditMatch],
   );
 
   const currentUserPhasePredictions = useMemo(
@@ -250,7 +292,8 @@ function QuinielaPage() {
   );
 
   const editable = canEditPhase(displayedPhase);
-  const hasNotConfirmed = !isPhaseConfirmed(displayedPhase) || Boolean(currentUser?.isAdmin);
+  const showConfirmPhase = displayedPhase === "groups";
+  const hasNotConfirmed = !phaseConfirmed || Boolean(currentUser?.isAdmin);
   const confirmablePhaseMatches = currentUser?.isAdmin
     ? matches
     : matches.filter(m => m.status === 'scheduled');
@@ -283,11 +326,36 @@ function QuinielaPage() {
     setRoundFilter("all");
   }, [displayedPhase]);
 
+  useEffect(() => {
+    const currentTime = now.getTime();
+    const nextKickoffAt = matches
+      .map((match) => new Date(match.kickoffAt).getTime())
+      .filter((kickoffAt) => Number.isFinite(kickoffAt) && kickoffAt >= currentTime)
+      .sort((a, b) => a - b)[0];
+    if (nextKickoffAt === undefined) return undefined;
+
+    const delay = Math.min(
+      Math.max(nextKickoffAt - currentTime + 1, 0),
+      MAX_LOCK_REFRESH_DELAY_MS,
+    );
+
+    const timeoutId = window.setTimeout(() => {
+      setNow(new Date());
+    }, delay);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [matches, now]);
+
   if (!currentUser) {
     return null;
   }
 
   function openModal(match: Match) {
+    if (!canEditMatch(match, new Date())) {
+      toast.error(LOCKED_MATCH_MESSAGE);
+      return;
+    }
+
     setSelectedMatch(match);
   }
 
@@ -312,6 +380,10 @@ function QuinielaPage() {
 
   async function onSaveModalMatch(input: MatchScoreEntrySubmitInput) {
     if (!selectedMatch || isSavingMatch) return;
+    if (!canEditMatch(selectedMatch, new Date())) {
+      toast.error(LOCKED_MATCH_MESSAGE);
+      return;
+    }
 
     setIsSavingMatch(true);
 
@@ -391,20 +463,13 @@ function QuinielaPage() {
                   Pendiente
                 </Badge>
               )}
-              {prediction && isPhaseConfirmed(displayedPhase) ? null : (
-                <Button
-                  onClick={() => openModal(match)}
-                  disabled={
-                    !canPredictMatch(
-                      match,
-                      Boolean(currentUser?.isAdmin),
-                      isPhaseConfirmed(displayedPhase),
-                    )
-                  }
-                >
-                  {prediction ? "Actualizar" : "Cargar"}
-                </Button>
-              )}
+              <MatchActionButton
+                match={match}
+                prediction={prediction}
+                canEdit={canEditMatch(match)}
+                phaseConfirmed={phaseConfirmed}
+                onOpen={openModal}
+              />
             </div>
           </div>
         </div>
@@ -455,20 +520,13 @@ function QuinielaPage() {
             </Badge>
           )}
 
-          {prediction && isPhaseConfirmed(displayedPhase) ? null : (
-            <Button
-              onClick={() => openModal(match)}
-              disabled={
-                !canPredictMatch(
-                  match,
-                  Boolean(currentUser?.isAdmin),
-                  isPhaseConfirmed(displayedPhase),
-                )
-              }
-            >
-              {prediction ? "Actualizar" : "Cargar"}
-            </Button>
-          )}
+          <MatchActionButton
+            match={match}
+            prediction={prediction}
+            canEdit={canEditMatch(match)}
+            phaseConfirmed={phaseConfirmed}
+            onOpen={openModal}
+          />
         </div>
       </Card>
     );
@@ -493,7 +551,6 @@ function QuinielaPage() {
                   <FlaskConicalIcon className="h-3.5 w-3.5" />
                   Preview
                 </Badge>
-                <Button disabled>Actualizar</Button>
               </div>
             </div>
           </div>
@@ -526,9 +583,6 @@ function QuinielaPage() {
         </div>
         <div className="flex items-center gap-2">
           <Badge className="gap-1 bg-zinc-800 text-zinc-300">Por definir</Badge>
-          <Button disabled variant="outline">
-            No disponible
-          </Button>
         </div>
       </Card>
     );
@@ -567,7 +621,7 @@ function QuinielaPage() {
                 </p>
                 <p className="mt-1 text-sm text-zinc-300">
                   Estado:{" "}
-                  {isPhaseConfirmed(displayedPhase)
+                  {phaseConfirmed
                     ? "confirmada"
                     : isPhaseLockedAtNow(displayedPhase)
                       ? "cerrada"
@@ -609,6 +663,48 @@ function QuinielaPage() {
                 </Badge>
               </button>
             ))}
+          </section>
+
+          <section className="mb-5 grid gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4">
+            <label className="grid gap-1 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+              Buscar pais
+              <Input
+                value={countryFilter}
+                onChange={(event) => setCountryFilter(event.target.value)}
+                placeholder="Ej: Mexico, Argentina..."
+              />
+            </label>
+
+            <div className="grid gap-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Grupo</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide transition ${
+                    groupFilter === "todos"
+                      ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--secondary)]"
+                      : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500"
+                  }`}
+                  onClick={() => setGroupFilter("todos")}
+                >
+                  Todos
+                </button>
+                {allGroups.map((group) => (
+                  <button
+                    key={group}
+                    type="button"
+                    className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide transition ${
+                      groupFilter === group
+                        ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--secondary)]"
+                        : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500"
+                    }`}
+                    onClick={() => setGroupFilter(group)}
+                  >
+                    {group.replace("Grupo ", "")}
+                  </button>
+                ))}
+              </div>
+            </div>
           </section>
 
           {displayedPhase === "groups" ? (
@@ -698,6 +794,7 @@ function QuinielaPage() {
                     match={selectedMatch}
                     prediction={predictionForMatch(selectedMatch)}
                     isSaving={isSavingMatch}
+                    now={now}
                     onCancel={() => setSelectedMatch(null)}
                     onSubmit={(input) => void onSaveModalMatch(input)}
                   />
@@ -710,18 +807,20 @@ function QuinielaPage() {
             <QuinielaMatchFlow />
           </QuinielaMatchFlowProvider>
 
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--surface-0)]/95 px-4 py-3 backdrop-blur mb-16 md:mb-0">
-            <QuinielaProgress
-              savedMatchesCount={savedMatchesCount}
-              totalMatchesCount={totalMatchesCount}
-              missingFixtureCount={knockoutViews.missingCount}
-              missingPredictionCount={missingPredictionCount}
-              savedProgress={savedProgress}
-              editable={editable}
-              canConfirmPhase={canConfirmPhase}
-              onConfirmPhase={() => void onConfirmPhase()}
-            />
-          </div>
+          {showConfirmPhase ? (
+            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--surface-0)]/95 px-4 py-3 backdrop-blur mb-16 md:mb-0">
+              <QuinielaProgress
+                savedMatchesCount={savedMatchesCount}
+                totalMatchesCount={totalMatchesCount}
+                missingFixtureCount={knockoutViews.missingCount}
+                missingPredictionCount={missingPredictionCount}
+                savedProgress={savedProgress}
+                editable={editable}
+                canConfirmPhase={canConfirmPhase}
+                onConfirmPhase={() => void onConfirmPhase()}
+              />
+            </div>
+          ) : null}
 
           {currentUser.isAdmin ? (
             <QuinielaTestPreviewControls

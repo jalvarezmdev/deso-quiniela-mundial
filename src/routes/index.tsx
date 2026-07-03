@@ -1,5 +1,5 @@
 import { Link, Navigate, createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-hot-toast'
 import { RequireAuth } from '#/components/layout/require-auth'
 import { Button } from '#/components/ui/button'
@@ -7,9 +7,13 @@ import { Card } from '#/components/ui/card'
 import { QualifiedTeamSelect } from '#/components/ui/qualified-team-select'
 import { LoadingScreen } from '#/components/layout/loading-screen'
 import { useApp } from '#/context/app-context'
+import { getUserMatchPointsMap } from '#/lib/calculate-points'
 import { toVenDateTimeLabel } from '#/lib/time'
 import { TEAMS, getTeam } from '#/lib/teams'
-import type { Match, MatchStatus } from '#/lib/types'
+import { type Match, type MatchStatus, type PhaseKey, PHASES } from '#/lib/types'
+import { MatchCard } from '#/components/match-card'
+import { useNextMatches } from '#/hooks/use-next-matches'
+import { useResultSummaryMatches } from '#/hooks/use-result-summary-matches'
 import { ZapIcon } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
@@ -17,7 +21,15 @@ export const Route = createFileRoute('/')({
 })
 
 function HomePage() {
-  const { authResolved, currentUser, state, leaderboard, updateFavoriteTeam } = useApp()
+  const {
+    authResolved,
+    currentUser,
+    state,
+    leaderboard,
+    updateFavoriteTeam,
+    refreshLive,
+    setMatchResult,
+  } = useApp()
   const defaultTeamId = TEAMS[0]?.id ?? 'mex'
   const [selectedTeamId, setSelectedTeamId] = useState(currentUser?.teamId ?? defaultTeamId)
   const [savingFavorite, setSavingFavorite] = useState(false)
@@ -28,6 +40,45 @@ function HomePage() {
     const currentTeamIsQualified = TEAMS.some((team) => team.id === currentUser.teamId)
     setSelectedTeamId(currentTeamIsQualified ? currentUser.teamId : defaultTeamId)
   }, [currentUser, defaultTeamId])
+
+  useEffect(() => {
+    refreshLive()
+    const timer = window.setInterval(() => refreshLive(), 60_000)
+    return () => window.clearInterval(timer)
+  }, [refreshLive])
+
+  const userId = currentUser?.id ?? ''
+
+  const nextMatches = useNextMatches(state.matches, state.predictions, userId)
+  const { liveMatches, recentFinalMatches } = useResultSummaryMatches(state.matches)
+  const compactResultMatches = liveMatches.length > 0
+    ? liveMatches
+    : recentFinalMatches.slice(0, 1)
+
+  const predictionMap = useMemo(() => {
+    const map = new Map<string, typeof state.predictions[number]>()
+    if (!currentUser) return map
+    for (const pred of state.predictions) {
+      if (pred.userId === currentUser.id) {
+        map.set(pred.matchId, pred)
+      }
+    }
+    return map
+  }, [state.predictions, currentUser])
+
+  function phaseLabel(phase: PhaseKey): string {
+    return PHASES.find((item) => item.key === phase)?.label ?? phase
+  }
+
+  const matchPoints = useMemo(
+    () =>
+      getUserMatchPointsMap(
+        state.matches,
+        state.predictions,
+        userId,
+      ),
+    [state.matches, state.predictions, userId],
+  )
 
   if (!authResolved) {
     return <LoadingScreen />
@@ -110,6 +161,63 @@ function HomePage() {
             </div>
           </div>
         </section>
+
+        {nextMatches.length > 0 && (
+          <div className="mt-6">
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
+                Tus proximas predicciones
+              </h3>
+              <div className="mt-2 grid gap-3 md:grid-cols-3">
+                {nextMatches.map((item) => (
+                  <MatchCard
+                    key={item.match.id}
+                    match={item.match}
+                    home={item.home}
+                    away={item.away}
+                    phaseLabel={item.phaseLabel}
+                    prediction={item.prediction}
+                    points={matchPoints[item.match.id]}
+                    canEditLiveResult={currentUser.isAdmin}
+                    onSaveLiveResult={setMatchResult}
+                  />
+                ))}
+              </div>
+              <hr className="mt-4 border-t border-zinc-800" />
+            </div>
+          </div>
+        )}
+
+        {compactResultMatches.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
+              {compactResultMatches.some((m) => m.status === 'live')
+                ? 'Partido EN VIVO'
+                : 'Ultimo Partido'}
+            </h3>
+            <div className="mt-2 grid gap-3">
+              {compactResultMatches.map((match) => {
+                const home = getTeam(match.homeTeamId)
+                const away = getTeam(match.awayTeamId)
+
+                return (
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    home={home}
+                    away={away}
+                    phaseLabel={phaseLabel(match.phase)}
+                    prediction={predictionMap.get(match.id) ?? null}
+                    points={matchPoints[match.id]}
+                    canEditLiveResult={currentUser.isAdmin}
+                    onSaveLiveResult={setMatchResult}
+                  />
+                )
+              })}
+            </div>
+            <hr className="mt-4 border-t border-zinc-800" />
+          </div>
+        )}
 
         <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <KpiCard title="Tu score" value={userStanding ? `${userStanding.points} pts` : 'Sin puntos'} accent="lime" />

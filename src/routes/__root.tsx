@@ -18,7 +18,7 @@ export const Route = createRootRoute({
       { charSet: 'utf-8' },
       {
         name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
+        content: 'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content',
       },
       {
         title: 'Quiniela Mundial 2026',
@@ -27,8 +27,27 @@ export const Route = createRootRoute({
         name: 'description',
         content: 'App para montar quinielas por fases con resultados en vivo y ranking.',
       },
+      {
+        name: 'theme-color',
+        content: '#0f172a',
+      },
+      {
+        name: 'apple-mobile-web-app-capable',
+        content: 'yes',
+      },
+      {
+        name: 'apple-mobile-web-app-status-bar-style',
+        content: 'black-translucent',
+      },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' },
+      { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
+      { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+      { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+      { rel: 'manifest', href: '/manifest.json' },
+    ],
   }),
   shellComponent: RootDocument,
 })
@@ -97,7 +116,7 @@ export function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <div className="relative flex-1 overflow-hidden pb-20 md:pb-0">
+      <div className={`relative flex-1 overflow-hidden md:pb-0 ${currentUser ? 'pb-20' : ''}`}>
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10"

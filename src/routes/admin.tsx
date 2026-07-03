@@ -9,7 +9,7 @@ import { Card } from '#/components/ui/card'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { useApp } from '#/context/app-context'
-import { getTeam } from '#/lib/teams'
+import { getTeam, TEAMS } from '#/lib/teams'
 import {
   fromVenDateTimeInput,
   toVenDateTimeInputValue,
@@ -20,6 +20,17 @@ import { PHASES, type PhaseKey } from '#/lib/types'
 export const Route = createFileRoute('/admin')({
   component: AdminPage,
 })
+
+const selectClassName =
+  'h-10 w-full rounded-md border border-[var(--line)] bg-[var(--secondary)] px-3 text-sm'
+
+function TeamOptions() {
+  return TEAMS.map((team) => (
+    <option key={team.id} value={team.id}>
+      {team.flag} {team.name}
+    </option>
+  ))
+}
 
 function AdminPage() {
   function phaseLabel(phase: PhaseKey): string {
@@ -262,12 +273,28 @@ function AdminPage() {
                   <Input name="kickoffAt" type="datetime-local" required />
                 </div>
                 <div>
-                  <Label>Local (teamId)</Label>
-                  <Input name="homeTeamId" placeholder="arg" required />
+                  <Label>Local</Label>
+                  <select
+                    name="homeTeamId"
+                    aria-label="Local"
+                    className={selectClassName}
+                    defaultValue={TEAMS[0]?.id}
+                    required
+                  >
+                    <TeamOptions />
+                  </select>
                 </div>
                 <div>
-                  <Label>Visitante (teamId)</Label>
-                  <Input name="awayTeamId" placeholder="eng" required />
+                  <Label>Visitante</Label>
+                  <select
+                    name="awayTeamId"
+                    aria-label="Visitante"
+                    className={selectClassName}
+                    defaultValue={TEAMS[1]?.id}
+                    required
+                  >
+                    <TeamOptions />
+                  </select>
                 </div>
                 <div>
                   <Label>Goles local</Label>
@@ -279,7 +306,15 @@ function AdminPage() {
                 </div>
                 <div>
                   <Label>Clasificado</Label>
-                  <Input name="qualifiedTeamId" placeholder="arg (si aplica)" />
+                  <select
+                    name="qualifiedTeamId"
+                    aria-label="Clasificado"
+                    className={selectClassName}
+                    defaultValue=""
+                  >
+                    <option value="">No aplica</option>
+                    <TeamOptions />
+                  </select>
                 </div>
                 <div>
                   <Label>Estatus</Label>

@@ -169,6 +169,7 @@ function IngresoPage() {
               <Input
                 id="registerNickname"
                 value={nickname}
+                maxLength={50}
                 onChange={(event) => setNickname(event.target.value)}
                 required
               />

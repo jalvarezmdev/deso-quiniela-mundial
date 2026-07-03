@@ -6,6 +6,7 @@ import {
   jsonError,
   jsonOk,
   parsePhaseKey,
+  PREDICTIONS_QUERY_LIMIT,
   type PhaseSubmissionsRow,
   toPhaseSubmissionDTO,
 } from "../helpers/quinielas-helpers.ts";
@@ -13,6 +14,7 @@ import {
   getMissingFixtureCount,
   getMissingPredictionMatchIds,
 } from "../helpers/phase-submission-completion.ts";
+import { invalidateLeaderboardCache } from "./list-leaderboard.ts";
 
 export async function handleCreatePhaseSubmission(
   ctx: AuthenticatedActionContext,
@@ -75,7 +77,8 @@ export async function handleCreatePhaseSubmission(
       .from("predictions")
       .select("match_id")
       .eq("user_id", ctx.me.id)
-      .eq("phase", phase);
+      .eq("phase", phase)
+      .limit(PREDICTIONS_QUERY_LIMIT);
 
     if (predictionsError) return handleDbError(predictionsError);
 
@@ -109,6 +112,7 @@ export async function handleCreatePhaseSubmission(
 
     if (error || !data) return handleDbError(error);
 
+    invalidateLeaderboardCache();
     return jsonOk({ submission: toPhaseSubmissionDTO(data) }, 201);
   } catch (error) {
     if (isValidationError(error)) {

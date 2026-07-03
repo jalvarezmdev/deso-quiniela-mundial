@@ -41,4 +41,25 @@ describe('QuinielaProgress', () => {
 
     expect(screen.getByText('Faltan 2 pronosticos para habilitar confirmacion.')).toBeTruthy()
   })
+
+  it('renders no progress bar when phase confirmation is disabled', () => {
+    render(
+      <QuinielaProgress
+        savedMatchesCount={1}
+        totalMatchesCount={1}
+        missingFixtureCount={0}
+        missingPredictionCount={0}
+        savedProgress={100}
+        editable
+        canConfirmPhase={false}
+        showConfirmPhase={false}
+        onConfirmPhase={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText(/progreso quiniela/i)).toBeNull()
+    expect(screen.queryByText(/1 \/ 1 cargados/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: /guardar borrador/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /enviar quiniela final/i })).toBeNull()
+  })
 })

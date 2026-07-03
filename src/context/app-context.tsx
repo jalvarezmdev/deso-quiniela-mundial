@@ -35,6 +35,7 @@ import {
   isPhaseEditable,
   isPhaseLocked,
 } from '#/lib/phase-flow'
+import { isMatchLocked } from '#/lib/match-lock'
 import {
   type AppState,
   type LeaderboardRow,
@@ -52,13 +53,22 @@ import {
 
 const SESSION_TOKEN_KEY = 'quiniela_session_token_v1'
 const HYDRATION_SAFE_NOW_ISO = '2026-01-01T00:00:00.000Z'
+const MAX_NICKNAME_LENGTH = 50
 
 function isPinValid(pin: string): boolean {
   return /^\d{6}$/.test(pin)
 }
 
+function countNicknameCharacters(nickname: string): number {
+  return Array.from(nickname).length
+}
+
 function wasPhaseConfirmed(submissions: PhaseSubmission[], userId: string, phase: PhaseKey): boolean {
   return submissions.some((submission) => submission.userId === userId && submission.phase === phase)
+}
+
+function isKnockoutPhase(phase: PhaseKey): boolean {
+  return phase !== 'groups'
 }
 
 function buildInitialState(): AppState {
@@ -509,6 +519,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return formatUsersError('Todos los campos son obligatorios.')
     }
 
+    if (countNicknameCharacters(nickname) > MAX_NICKNAME_LENGTH) {
+      return formatUsersError(`El nombre o apodo no puede superar ${MAX_NICKNAME_LENGTH} caracteres.`)
+    }
+
     if (!isPinValid(payload.pin)) {
       return formatUsersError('El PIN debe tener 6 digitos numericos.')
     }
@@ -639,7 +653,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return false
     }
 
-    if (wasPhaseConfirmed(state.submissions, currentUser.id, phase)) {
+    if (!isKnockoutPhase(phase) && wasPhaseConfirmed(state.submissions, currentUser.id, phase)) {
       return false
     }
 
@@ -943,6 +957,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const isPhaseConfirmed = useCallback((phase: PhaseKey) => {
     if (!currentUser) return false
+    if (isKnockoutPhase(phase)) return false
     return wasPhaseConfirmed(state.submissions, currentUser.id, phase)
   }, [currentUser, state.submissions])
 
@@ -961,7 +976,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { ok: false as const, message: 'Partido no encontrado.' }
     }
 
-    if (match.status !== 'scheduled') {
+    if (isMatchLocked(match)) {
       return { ok: false as const, message: 'No se puede modificar el pronostico: el partido esta en curso o finalizado.' }
     }
 

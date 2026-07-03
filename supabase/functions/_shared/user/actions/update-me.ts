@@ -1,7 +1,10 @@
 import type { SupabaseAdminClient } from "../../general/supabase-client.ts";
 import {
+  countNicknameCharacters,
   handleDbError,
+  jsonError,
   jsonOk,
+  MAX_NICKNAME_LENGTH,
   normalizeNickname,
   normalizeTeamId,
   type ProfilesRow,
@@ -21,8 +24,24 @@ export async function handleUpdateMe({
   const teamId = normalizeTeamId(payload.teamId);
   const onboardingCompleted = payload.onboardingCompleted;
 
-  const updates: Record<string, unknown> = {};
+  // Block non-admin from changing sensitive fields
+  if (nickname && !me.is_admin) {
+    return jsonError(
+      "FORBIDDEN",
+      "Solo administradores pueden cambiar el nombre o apodo.",
+      403,
+    );
+  }
 
+  if (nickname && countNicknameCharacters(nickname) > MAX_NICKNAME_LENGTH) {
+    return jsonError(
+      "VALIDATION_ERROR",
+      `El nombre o apodo no puede superar ${MAX_NICKNAME_LENGTH} caracteres.`,
+      400,
+    );
+  }
+
+  const updates: Record<string, unknown> = {};
   if (nickname) updates.nickname = nickname;
   if (teamId) updates.team_id = teamId;
   if (typeof onboardingCompleted === "boolean") {

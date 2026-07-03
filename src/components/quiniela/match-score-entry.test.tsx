@@ -93,4 +93,128 @@ describe('MatchScoreEntry', () => {
       predictedQualifiedTeamId: 'arg',
     })
   })
+
+  it('auto-selects the home team when home score is winning in knockout', () => {
+    const onSubmit = vi.fn()
+    render(
+      <MatchScoreEntry
+        match={createMatch({ phase: 'roundOf16', homeTeamId: 'arg', awayTeamId: 'bra' })}
+        prediction={null}
+        isSaving={false}
+        onCancel={() => undefined}
+        onSubmit={onSubmit}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/arg/i), { target: { value: '2' } })
+    fireEvent.change(screen.getByLabelText(/bra/i), { target: { value: '0' } })
+    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      homeGoals: 2,
+      awayGoals: 0,
+      predictedQualifiedTeamId: 'arg',
+    })
+  })
+
+  it('auto-selects the away team when away score is winning in knockout', () => {
+    const onSubmit = vi.fn()
+    render(
+      <MatchScoreEntry
+        match={createMatch({ phase: 'roundOf16', homeTeamId: 'arg', awayTeamId: 'bra' })}
+        prediction={null}
+        isSaving={false}
+        onCancel={() => undefined}
+        onSubmit={onSubmit}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/arg/i), { target: { value: '0' } })
+    fireEvent.change(screen.getByLabelText(/bra/i), { target: { value: '2' } })
+    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      homeGoals: 0,
+      awayGoals: 2,
+      predictedQualifiedTeamId: 'bra',
+    })
+  })
+
+  it('lets a clear winner overwrite a previous manual qualified team', () => {
+    const onSubmit = vi.fn()
+    render(
+      <MatchScoreEntry
+        match={createMatch({ phase: 'roundOf16', homeTeamId: 'arg', awayTeamId: 'bra' })}
+        prediction={null}
+        isSaving={false}
+        onCancel={() => undefined}
+        onSubmit={onSubmit}
+      />,
+    )
+
+    fireEvent.change(screen.getByRole('combobox', { name: /clasificado final/i }), {
+      target: { value: 'arg' },
+    })
+    fireEvent.change(screen.getByLabelText(/arg/i), { target: { value: '0' } })
+    fireEvent.change(screen.getByLabelText(/bra/i), { target: { value: '1' } })
+    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      homeGoals: 0,
+      awayGoals: 1,
+      predictedQualifiedTeamId: 'bra',
+    })
+  })
+
+  it('keeps the selected qualified team when knockout score returns to a draw', () => {
+    const onSubmit = vi.fn()
+    render(
+      <MatchScoreEntry
+        match={createMatch({ phase: 'roundOf16', homeTeamId: 'arg', awayTeamId: 'bra' })}
+        prediction={createPrediction({
+          phase: 'roundOf16',
+          homeGoals: 1,
+          awayGoals: 1,
+          predictedQualifiedTeamId: 'arg',
+        })}
+        isSaving={false}
+        onCancel={() => undefined}
+        onSubmit={onSubmit}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText(/arg/i), { target: { value: '2' } })
+    fireEvent.change(screen.getByLabelText(/bra/i), { target: { value: '2' } })
+    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      homeGoals: 2,
+      awayGoals: 2,
+      predictedQualifiedTeamId: 'arg',
+    })
+  })
+
+  it('blocks editing and submit when the current time reaches kickoff', () => {
+    const onSubmit = vi.fn()
+    render(
+      <MatchScoreEntry
+        match={createMatch({ kickoffAt: '2026-06-29T19:00:00.000Z' })}
+        prediction={createPrediction()}
+        isSaving={false}
+        now={new Date('2026-06-29T19:00:00.000Z')}
+        onCancel={() => undefined}
+        onSubmit={onSubmit}
+      />,
+    )
+
+    const homeGoalsInput = screen.getByLabelText(/mex/i) as HTMLInputElement
+    const awayGoalsInput = screen.getByLabelText(/zaf/i) as HTMLInputElement
+
+    expect(homeGoalsInput.disabled).toBe(true)
+    expect(awayGoalsInput.disabled).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: /guardar/i }))
+
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
 })

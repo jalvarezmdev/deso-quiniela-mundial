@@ -1,11 +1,12 @@
+const LOADING_IMG = '/trionda.png'
 export function LoadingScreen() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="rounded-[20px] bg-[var(--accent)] px-4 py-6">
+      <div className="rounded-[20px] px-4 py-6">
         <img
-          src="/FIFA-26-Game-Logo-PNG.png"
+          src={LOADING_IMG}
           alt="Cargando"
-          className="h-28 w-auto animate-pulse"
+          className="h-28 w-auto animate-bounce"
         />
       </div>
     </div>

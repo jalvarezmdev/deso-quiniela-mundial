@@ -18,7 +18,7 @@ const slides = [
   },
   {
     title: 'Puntaje',
-    text: 'Acierto de ganador/empate: +1. Marcador exacto: +3 en total. En eliminatorias, el +1 de ganador se decide por clasificado final.',
+    text: 'Acierto de ganador/empate: +1. Marcador exacto: +3. En eliminatorias empatadas, acertar tambien el clasificado suma +1 adicional.',
   },
   {
     title: 'Confirmacion',

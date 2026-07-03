@@ -1,25 +1,24 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { RequireAuth } from '#/components/layout/require-auth'
 import { PageShell } from '#/components/layout/page-shell'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
-import { ResultadosMatchCard } from '#/components/resultados-match-card'
+import { MatchCard } from '#/components/match-card'
 import { useApp } from '#/context/app-context'
 import { getUserMatchPointsMap } from '#/lib/calculate-points'
 import { getGroupMatchRoundMap } from '#/lib/group-rounds'
 import { getTeam } from '#/lib/teams'
 import { toVenDateTimeLabel } from '#/lib/time'
-import { PHASES, type PhaseKey } from '#/lib/types'
-import { canPredictMatch } from '#/lib/match-lock'
+import { PHASES, type Match, type PhaseKey } from '#/lib/types'
+import { useResultSummaryMatches } from '#/hooks/use-result-summary-matches'
 
 export const Route = createFileRoute('/resultados')({
   component: ResultadosPage,
 })
 
 function ResultadosPage() {
-  const { state, refreshLive, currentUser, isPhaseConfirmed } = useApp()
-  const navigate = useNavigate()
+  const { state, refreshLive, currentUser, setMatchResult } = useApp()
   const [countryFilter, setCountryFilter] = useState('')
   const [groupFilter, setGroupFilter] = useState('todos')
   const [matchdayFilter, setMatchdayFilter] = useState('todas')
@@ -33,6 +32,17 @@ function ResultadosPage() {
       ),
     [state.matches, state.predictions, currentUser?.id],
   )
+
+  const predictionMap = useMemo(() => {
+    const map = new Map<string, typeof state.predictions[number]>()
+    if (!currentUser) return map
+    for (const pred of state.predictions) {
+      if (pred.userId === currentUser.id) {
+        map.set(pred.matchId, pred)
+      }
+    }
+    return map
+  }, [state.predictions, currentUser?.id])
 
   useEffect(() => {
     refreshLive()
@@ -98,6 +108,8 @@ function ResultadosPage() {
     })
   }, [countryFilter, groupFilter, matchdayFilter, sortedMatches, groupRoundMap])
 
+  const { liveMatches, recentFinalMatches } = useResultSummaryMatches(state.matches)
+
   const matchesByMatchday = useMemo(() => {
     const grouped = new Map<string, typeof filteredMatches>()
     for (const match of filteredMatches) {
@@ -110,6 +122,26 @@ function ResultadosPage() {
       .sort(([a], [b]) => a.localeCompare(b, 'es'))
       .map(([label, matches]) => ({ label, matches }))
   }, [filteredMatches, groupRoundMap])
+
+  function renderMatchCard(match: Match) {
+    const home = getTeam(match.homeTeamId)
+    const away = getTeam(match.awayTeamId)
+
+    return (
+      <div key={match.id}>
+        <MatchCard
+          match={match}
+          home={home}
+          away={away}
+          phaseLabel={phaseLabel(match.phase)}
+          prediction={predictionMap.get(match.id) ?? null}
+          points={matchPoints[match.id]}
+          canEditLiveResult={currentUser?.isAdmin ?? false}
+          onSaveLiveResult={setMatchResult}
+        />
+      </div>
+    )
+  }
 
   return (
     <RequireAuth>
@@ -207,6 +239,32 @@ function ResultadosPage() {
           </div>
         </section>
 
+        {(liveMatches.length > 0 || recentFinalMatches.length > 0) && (
+          <div className="mb-4">
+            {liveMatches.length > 0 && (
+              <section>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
+                  Partidos EN VIVO
+                </h3>
+                <div className="mt-2 grid gap-3">
+                  {liveMatches.map(renderMatchCard)}
+                </div>
+              </section>
+            )}
+            {recentFinalMatches.length > 0 && (
+              <section className={liveMatches.length > 0 ? 'mt-4' : undefined}>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
+                  Ultimos 3 resultados
+                </h3>
+                <div className="mt-2 grid gap-3">
+                  {recentFinalMatches.map(renderMatchCard)}
+                </div>
+              </section>
+            )}
+            <hr className="mt-4 border-t border-zinc-800" />
+          </div>
+        )}
+
         {matchesByMatchday.length === 0 ? (
           <p className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4 text-sm text-zinc-400">
             No hay partidos para el filtro seleccionado.
@@ -216,28 +274,7 @@ function ResultadosPage() {
             {matchesByMatchday.map((bucket) => (
               <div key={bucket.label} className="grid gap-3">
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">{bucket.label}</h3>
-                {bucket.matches.map((match) => {
-                  const home = getTeam(match.homeTeamId)
-                  const away = getTeam(match.awayTeamId)
-                  const isAdmin = Boolean(currentUser?.isAdmin)
-                  const phaseConfirmed = isPhaseConfirmed(match.phase)
-                  const userCanPredict = canPredictMatch(match, isAdmin, phaseConfirmed)
-
-                  return (
-                    <div key={match.id}>
-                      <ResultadosMatchCard
-                        match={match}
-                        home={home}
-                        away={away}
-                        phaseLabel={phaseLabel(match.phase)}
-                        isLiveHighlighted={match.status === 'live'}
-                        canPredict={userCanPredict}
-                        onPredict={() => void navigate({ to: '/quiniela', search: { phasePreview: undefined } })}
-                        points={matchPoints[match.id]}
-                      />
-                    </div>
-                  )
-                })}
+                {bucket.matches.map(renderMatchCard)}
               </div>
             ))}
           </section>

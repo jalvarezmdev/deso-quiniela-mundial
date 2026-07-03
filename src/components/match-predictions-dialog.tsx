@@ -76,7 +76,7 @@ export function MatchPredictionsDialog({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-xl border border-zinc-700 bg-zinc-900 p-4"
+        className="flex max-h-[85dvh] w-full max-w-md flex-col rounded-xl border border-zinc-700 bg-zinc-900 p-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -92,7 +92,7 @@ export function MatchPredictionsDialog({
           </button>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
           {loading ? (
             <p className="text-sm text-zinc-400">Cargando predicciones...</p>
           ) : errorMessage ? (
@@ -103,19 +103,37 @@ export function MatchPredictionsDialog({
             </p>
           ) : (
             <ul className="grid gap-2">
-              {predictions.map((pred, i) => (
-                <li
-                  key={i}
-                  className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/50 px-3 py-2"
-                >
-                  <span className="text-sm font-medium text-zinc-200">
-                    {pred.nickname}
-                  </span>
-                  <span className="text-sm font-bold text-[var(--primary)]">
-                    {pred.homeGoals} - {pred.awayGoals}
-                  </span>
-                </li>
-              ))}
+              {predictions.map((pred, i) => {
+                const qualifiedTeam = pred.predictedQualifiedTeamId
+                  ? getTeam(pred.predictedQualifiedTeamId)
+                  : null
+
+                return (
+                  <li
+                    key={i}
+                    className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/50 px-3 py-2"
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0 rounded-full border border-[var(--accent)]/60 bg-[var(--accent)]/10 px-2 py-0.5 text-xs font-bold text-[var(--accent)]">
+                        +{pred.points} PTS
+                      </span>
+                      <span className="truncate text-sm font-medium text-zinc-200">
+                        {pred.nickname}
+                      </span>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-bold text-[var(--primary)]">
+                        {pred.homeGoals} - {pred.awayGoals}
+                      </p>
+                      {qualifiedTeam ? (
+                        <p className="text-xs font-bold uppercase text-[var(--accent)]">
+                          Avanza {qualifiedTeam.flag}
+                        </p>
+                      ) : null}
+                    </div>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>

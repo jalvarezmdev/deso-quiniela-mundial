@@ -12,6 +12,7 @@ import {
   validateMatchOutcomeConsistency,
 } from "../helpers/parse-inputs.ts";
 import { computeAndStoreMatchPoints } from "../helpers/scoring.ts";
+import { invalidateLeaderboardCache } from "./list-leaderboard.ts";
 
 function toDbPatch(patch: Record<string, unknown>): Record<string, unknown> {
   const dbPatch: Record<string, unknown> = {};
@@ -102,6 +103,7 @@ export async function handleUpdateMatch(
         .eq("match_id", data.id);
     }
 
+    invalidateLeaderboardCache();
     return jsonOk({ match: toMatchDTO(data) });
   } catch (error) {
     if (isValidationError(error)) {

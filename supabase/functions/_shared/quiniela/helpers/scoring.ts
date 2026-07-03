@@ -1,5 +1,7 @@
 // supabase/functions/_shared/quiniela/helpers/scoring.ts
 
+import { PREDICTIONS_QUERY_LIMIT } from './quinielas-helpers.ts'
+
 type ScoringInput = {
   phase: string;
   homeGoals: number;
@@ -14,29 +16,43 @@ type ScoringInput = {
  * Compute points for a single match prediction.
  * - Exact score: 3 points
  * - Group phase result sign match: 1 point
- * - Knockout qualified team match: 1 point
+ * - Knockout qualified team match: 1 point, additive on drawn scores
  * - Wrong: 0 points
  */
 export function computeMatchPoints(input: ScoringInput): number {
-  // Exact score match: 3 points
-  if (
+  const exactScore =
     input.homeGoals === input.predictedHomeGoals &&
-    input.awayGoals === input.predictedAwayGoals
-  ) {
+    input.awayGoals === input.predictedAwayGoals;
+
+  if (input.phase !== "groups") {
+    const actualDraw = resultSign(input.homeGoals, input.awayGoals) === 0;
+    const predictedDraw =
+      resultSign(input.predictedHomeGoals, input.predictedAwayGoals) === 0;
+    const correctQualifiedTeam =
+      input.qualifiedTeamId !== null &&
+      input.qualifiedTeamId === input.predictedQualifiedTeamId;
+
+    if (actualDraw) {
+      const scorePoints = exactScore ? 3 : predictedDraw ? 1 : 0;
+      const qualifierPoints = correctQualifiedTeam ? 1 : 0;
+      return scorePoints + qualifierPoints;
+    }
+
+    if (exactScore) return 3;
+    return correctQualifiedTeam ? 1 : 0;
+  }
+
+  // Exact score match: 3 points
+  if (exactScore) {
     return 3;
   }
 
   // Group phase: result sign match = 1 point
-  if (input.phase === "groups") {
-    const actualSign = Math.sign(input.homeGoals - input.awayGoals);
-    const predictedSign = Math.sign(
-      input.predictedHomeGoals - input.predictedAwayGoals
-    );
-    return actualSign === predictedSign ? 1 : 0;
-  }
-
-  // Knockout phase: qualified team match = 1 point
-  return input.qualifiedTeamId === input.predictedQualifiedTeamId ? 1 : 0;
+  const actualSign = Math.sign(input.homeGoals - input.awayGoals);
+  const predictedSign = Math.sign(
+    input.predictedHomeGoals - input.predictedAwayGoals
+  );
+  return actualSign === predictedSign ? 1 : 0;
 }
 
 /**
@@ -65,12 +81,15 @@ export async function computeAndStoreMatchPoints(
 
   // Need both scores to compute
   if (match.homeGoals === null || match.awayGoals === null) return;
+  const homeGoals = match.homeGoals;
+  const awayGoals = match.awayGoals;
 
   // Fetch all predictions for this match
   const { data: predictions } = await supabase
     .from("predictions")
     .select("user_id, home_goals, away_goals, predicted_qualified_team_id")
-    .eq("match_id", match.matchId);
+    .eq("match_id", match.matchId)
+    .limit(PREDICTIONS_QUERY_LIMIT);
 
   if (!predictions?.length) return;
 
@@ -81,8 +100,8 @@ export async function computeAndStoreMatchPoints(
     phase: match.phase,
     points: computeMatchPoints({
       phase: match.phase,
-      homeGoals: match.homeGoals,
-      awayGoals: match.awayGoals,
+      homeGoals,
+      awayGoals,
       qualifiedTeamId: match.qualifiedTeamId,
       predictedHomeGoals: pred.home_goals,
       predictedAwayGoals: pred.away_goals,
