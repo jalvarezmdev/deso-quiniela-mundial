@@ -77,10 +77,26 @@ async function extractCardsFromDOM(page: Page): Promise<RawCard[]> {
       const awayScore = numericSpans[1] ?? null
 
       const bdis = card.querySelectorAll("bdi")
+
+      // Date (first bdi)
       const dateText = bdis[0]?.textContent?.trim() || ""
 
-      const statusText =
-        card.textContent?.match(/\b(FT|HT|AP|AET|PEN|Not started|Scheduled)\b/i)?.[0] ?? ""
+      // Status detection from bdi elements
+      let statusText = ""
+      for (const bdi of bdis as unknown as HTMLElement[]) {
+        const style = bdi.getAttribute("style") || ""
+        if (style.includes("colors-status-live")) {
+          statusText = "live"
+          break
+        }
+        if (style.includes("colors-neutrals-n-lv3")) {
+          const text = bdi.textContent?.trim() || ""
+          if (text === "FT" || text === "AP" || text === "AET") {
+            statusText = text
+            break
+          }
+        }
+      }
 
       results.push({
         matchRef: idMatch,
