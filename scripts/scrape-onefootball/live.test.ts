@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { JSDOM } from "jsdom"
+import { readFileSync } from "node:fs"
 import {
   deriveQualifiedTeamId,
   extractVisibleLiveMatchCardsFromDocument,
@@ -11,8 +12,18 @@ describe("OneFootball live scraping", () => {
   it("can be serialized into Playwright page.evaluate without outer helper references", () => {
     const serialized = extractVisibleLiveMatchCardsFromDocument.toString()
 
+    expect(serialized).not.toContain("__name(")
     expect(serialized).not.toContain("firstMatchId(")
     expect(serialized).not.toContain("cardStatus(")
+  })
+
+  it("keeps page.evaluate helpers serializable by tsx", () => {
+    const source = readFileSync(new URL("./live.ts", import.meta.url), "utf8")
+
+    expect(source).not.toContain("const getMatchId = (")
+    expect(source).not.toContain("const getCardStatus = (")
+    expect(source).not.toContain("function getMatchId(")
+    expect(source).not.toContain("function getCardStatus(")
   })
 
   it("extracts all visible live cards without expanding historical results", () => {

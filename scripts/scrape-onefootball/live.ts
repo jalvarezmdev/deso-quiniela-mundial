@@ -33,24 +33,14 @@ type QualifiedTeamInput = {
 
 export function extractVisibleLiveMatchCardsFromDocument(targetDocument?: Document): RawMatchCard[] {
   const document = targetDocument ?? globalThis.document
-  const getMatchId = (href: string): string => {
-    return /\/match\/(\d+)/.exec(href)?.[1] ?? /(\d{7,})/.exec(href)?.[1] ?? ""
-  }
-  const getCardStatus = (text: string): "scheduled" | "live" | "final" => {
-    if (/\blive\b|\b1h\b|\b2h\b|\bht\b|\bet\b|extra\s*time/i.test(text)) {
-      return "live"
-    }
-    if (/full\s*time|\bft\b|\baet\b|\bpens?\b|after\s+pen/i.test(text)) {
-      return "final"
-    }
-    return "scheduled"
-  }
+  const liveStatusPattern = /\blive\b|\b1h\b|\b2h\b|\bht\b|\bet\b|extra\s*time/i
+  const finalStatusPattern = /full\s*time|\bft\b|\baet\b|\bpens?\b|after\s+pen/i
   const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href*="match"]'))
   const cards: RawMatchCard[] = []
 
   for (const link of links) {
     const href = link.getAttribute("href") ?? ""
-    const matchRef = getMatchId(href)
+    const matchRef = /\/match\/(\d+)/.exec(href)?.[1] ?? /(\d{7,})/.exec(href)?.[1] ?? ""
     if (!matchRef) continue
 
     const style = link.ownerDocument.defaultView?.getComputedStyle(link)
@@ -73,18 +63,15 @@ export function extractVisibleLiveMatchCardsFromDocument(targetDocument?: Docume
     const visibleText = link.textContent?.replace(/\s+/g, " ").trim() ?? ""
     const cardText = [altText, visibleText].filter(Boolean).join(" ")
     const statusEl = link.querySelector('[class*="status"], [class*="Status"], [class*="period"]')
-    const inferredStatus = getCardStatus(cardText)
-    const rawStatusText = statusEl?.textContent?.trim() || (
-      inferredStatus === "live"
-        ? "live"
-        : inferredStatus === "final"
-          ? "Full time"
-          : ""
-    )
-
-    const status = rawStatusText ? getCardStatus(rawStatusText) : inferredStatus
+    const rawStatusText = statusEl?.textContent?.trim() ?? ""
+    const statusSource = rawStatusText || cardText
+    const status = liveStatusPattern.test(statusSource)
+      ? "live"
+      : finalStatusPattern.test(statusSource)
+        ? "final"
+        : "scheduled"
     if (status !== "live" && status !== "final") continue
-    const statusText = status === "live" ? "live" : rawStatusText
+    const statusText = status === "live" ? "live" : rawStatusText || "Full time"
 
     const heading = Array.from(link.querySelectorAll("h2, h3"))
       .map((node) => node.textContent?.trim() ?? "")
@@ -106,7 +93,7 @@ export function extractVisibleLiveMatchCardsFromDocument(targetDocument?: Docume
     })
   }
 
-  const liveCards = cards.filter((card) => getCardStatus(card.statusText || card.cardText || "") === "live")
+  const liveCards = cards.filter((card) => liveStatusPattern.test(card.statusText || card.cardText || ""))
   if (liveCards.length > 0) return liveCards
 
   return cards.slice(0, 1)
