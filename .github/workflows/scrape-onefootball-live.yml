@@ -1,0 +1,37 @@
+name: Scrape OneFootball - Live Results
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # every 5 minutes
+  workflow_dispatch: {} # manual trigger
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: scripts/scrape-onefootball
+        run: npm install
+
+      - name: Install Chromium
+        working-directory: scripts/scrape-onefootball
+        run: npx playwright install chromium
+
+      - name: Run live scraper
+        working-directory: scripts/scrape-onefootball
+        run: npx tsx live.ts
+        env:
+          BD_CUSTOMER_ID: ${{ secrets.BD_CUSTOMER_ID }}
+          BD_ZONE_NAME: ${{ secrets.BD_ZONE_NAME }}
+          BD_ZONE_PASSWORD: ${{ secrets.BD_ZONE_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SCRAPE_SECRET: ${{ secrets.SCRAPE_SECRET }}
