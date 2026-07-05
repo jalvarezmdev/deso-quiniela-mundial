@@ -5,21 +5,18 @@ import "dotenv/config";
 import { connectBrowser } from "./brightdata.ts";
 import { mapCardToMatch } from "./index.ts";
 import { buildTeamGroupMap, resolveTeamId } from "./mappings.ts";
-import type { DesoQuinielaMatch, RawMatchCard, ScrapedMatch, ScrapePayload } from "./types.ts";
+import type {
+  DesoQuinielaMatch,
+  RawMatchCard,
+  ScrapedMatch,
+  ScrapePayload,
+} from "./types.ts";
 import { DesoQuiniela } from "./lib/deso-quiniela.ts";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
 const TOURNAMENT_URL =
   "https://onefootball.com/en/competition/fifa-world-cup-12/results";
-const EDGE_FUNCTION_URL = process.env.SUPABASE_URL
-  ? `${process.env.SUPABASE_URL}/functions/v1/scrape-onefootball`
-  : "https://sfhwktnwcumwmohizbtm.supabase.co/functions/v1/scrape-onefootball";
-const EDGE_FUNCTION_LIST_MATCHES = process.env.SUPABASE_URL
-  ? `${process.env.SUPABASE_URL}/functions/v1/quinielas`
-  : "https://sfhwktnwcumwmohizbtm.supabase.co/functions/v1/quinielas";
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ?? "";
-const SCRAPE_SECRET = process.env.SCRAPE_SECRET ?? "";
 
 const SCRIPT_DIR = import.meta.dirname ?? ".";
 const OUTPUT_DIR = resolve(SCRIPT_DIR, "../../tests");
@@ -39,89 +36,6 @@ type QualifiedTeamInput = {
   cardText?: string;
 };
 
-export function extractVisibleLiveMatchCardsFromDocument(
-  targetDocument?: Document,
-): RawMatchCard[] {
-  const document = targetDocument ?? globalThis.document;
-  const liveStatusPattern =
-    /\blive\b|\b1h\b|\b2h\b|\bht\b|\bet\b|extra\s*time/i;
-  const finalStatusPattern =
-    /full\s*time|\bft\b|\baet\b|\bpens?\b|after\s+pen/i;
-  const links = Array.from(
-    document.querySelectorAll<HTMLAnchorElement>('a[href*="match"]'),
-  );
-  const cards: RawMatchCard[] = [];
-
-  for (const link of links) {
-    const href = link.getAttribute("href") ?? "";
-    const matchRef =
-      /\/match\/(\d+)/.exec(href)?.[1] ?? /(\d{7,})/.exec(href)?.[1] ?? "";
-    if (!matchRef) continue;
-
-    const style = link.ownerDocument.defaultView?.getComputedStyle(link);
-    if (style?.display === "none" || style?.visibility === "hidden") continue;
-
-    const imgs = Array.from(link.querySelectorAll("img[alt]"));
-    const homeTeamName = imgs[0]?.getAttribute("alt")?.trim() ?? "";
-    const awayTeamName = imgs[1]?.getAttribute("alt")?.trim() ?? "";
-    if (!homeTeamName || !awayTeamName) continue;
-
-    const spans = Array.from(link.querySelectorAll("span"));
-    const scoreSpans = spans
-      .map((span) => span.textContent?.trim() ?? "")
-      .filter((text) => /^\d+$/.test(text));
-
-    const altText = imgs
-      .map((img) => img.getAttribute("alt")?.trim() ?? "")
-      .filter(Boolean)
-      .join(" ");
-    const visibleText = link.textContent?.replace(/\s+/g, " ").trim() ?? "";
-    const cardText = [altText, visibleText].filter(Boolean).join(" ");
-    const statusEl = link.querySelector(
-      '[class*="status"], [class*="Status"], [class*="period"]',
-    );
-    const rawStatusText = statusEl?.textContent?.trim() ?? "";
-    const statusSource = rawStatusText || cardText;
-    const status = liveStatusPattern.test(statusSource)
-      ? "live"
-      : finalStatusPattern.test(statusSource)
-        ? "final"
-        : "scheduled";
-    if (status !== "live" && status !== "final") continue;
-    const statusText =
-      status === "live" ? "live" : rawStatusText || "Full time";
-
-    const heading = Array.from(link.querySelectorAll("h2, h3"))
-      .map((node) => node.textContent?.trim() ?? "")
-      .find(Boolean);
-    const roundName = heading ?? "";
-    const timeEl = link.querySelector("time");
-    const dateText =
-      timeEl?.textContent?.trim() ||
-      timeEl?.getAttribute("datetime")?.trim() ||
-      "";
-
-    cards.push({
-      matchRef,
-      homeTeamName,
-      awayTeamName,
-      homeScore: scoreSpans[0] ?? null,
-      awayScore: scoreSpans[1] ?? null,
-      statusText,
-      dateText,
-      roundName,
-      cardText,
-    });
-  }
-
-  const liveCards = cards.filter((card) =>
-    liveStatusPattern.test(card.statusText || card.cardText || ""),
-  );
-  if (liveCards.length > 0) return liveCards;
-
-  return cards.slice(0, 1);
-}
-
 export function selectLiveSyncCandidates(
   matches: ScrapedMatch[],
 ): ScrapedMatch[] {
@@ -129,43 +43,6 @@ export function selectLiveSyncCandidates(
   if (liveMatches.length > 0) return liveMatches;
   const firstFinal = matches.find((match) => match.status === "final");
   return firstFinal ? [firstFinal] : [];
-}
-
-export function resolveVenezuelanKickoffAt(dateText: string): string | null {
-  const match =
-    /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(?:Z|[+-]\d{2}:?\d{2})?$/.exec(
-      dateText.trim(),
-    );
-  if (!match) return null;
-
-  const [, year, month, day, hour, minute, second = "0", millisecond = "0"] =
-    match;
-  const utcDate = new Date(
-    Date.UTC(
-      Number(year),
-      Number(month) - 1,
-      Number(day),
-      Number(hour) - 1,
-      Number(minute),
-      Number(second),
-      Number(millisecond.padEnd(3, "0")),
-    ),
-  );
-  if (Number.isNaN(utcDate.getTime())) return null;
-
-  const venezuelanFormatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Caracas",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-    
-  });
-
-  return venezuelanFormatter.format(utcDate).replace(", ", "T").replace(" PM", "");
 }
 
 export function deriveQualifiedTeamId(
@@ -247,7 +124,10 @@ function saveDryRun(payload: ScrapePayload): void {
   );
 }
 
-async function sendToSupabase(matches: ScrapedMatch[], desoQuiniela: DesoQuiniela): Promise<void> {
+async function sendToSupabase(
+  matches: ScrapedMatch[],
+  desoQuiniela: DesoQuiniela,
+): Promise<void> {
   if (matches.length === 0) {
     console.log("[send] No live matches to send");
     return;
@@ -272,7 +152,7 @@ async function sendToSupabase(matches: ScrapedMatch[], desoQuiniela: DesoQuiniel
   console.log(
     `[send] Posting ${matches.length} live matches to edge function...`,
   );
-  
+
   const result = await desoQuiniela.storeMatches(payload);
 
   console.log(
@@ -306,43 +186,86 @@ async function scrapeVisibleLiveResults(
       },
     );
 
-    // fetch matches
+    // Fetch matches
+    console.log("[scraper] Fetching all matches at DESO");
     const matchesListRes = await desoQuiniela.getMatches();
-    const matchesData: DesoQuinielaMatch[] = matchesListRes?.data?.matches ?? [];
+    console.log("[scraper] Matches resolved at DESO");
+    const matchesData: DesoQuinielaMatch[] =
+      matchesListRes?.data?.matches ?? [];
 
-    const targetedLiveMatches = matchesData.filter(match => match.status === 'live');
+    const targetedLiveMatches = matchesData.filter(
+      (match) => match.status === "live",
+    );
 
-    const rawCards = await page.evaluate((): RawMatchCard[] => {
-      const cards: RawMatchCard[] = [];
-      const phaseContainers = Array.from(document.querySelectorAll('.MatchCardsList_matches__EDfv_')).map((element) => {
-        const phaseTitle = (element.parentElement?.querySelector('.SectionHeader_subtitle__PDbwW') as HTMLHeadingElement).innerText ?? 'Unkown Phase';
+    console.log("[scraper] Checking OneFootball");
+    const rawMatches = await page.evaluate((): RawMatchCard[] => {
+      const matches: RawMatchCard[] = [];
+      const COUNTRY_ICON_TEXT = "Icon: ";
+      const DOM_ELEMENTS_CLASSES = {
+        phaseContainer: ".MatchCardsList_matches__EDfv_",
+        phaseTitle: ".SectionHeader_subtitle__PDbwW",
+        phaseMatches: ".MatchCard_matchCard__LynP5",
+        liveComponent: ".SimpleMatchCard_simpleMatchCard__live__7ffkD",
+        fullTimeTextElement:
+          ".SimpleMatchCard_simpleMatchCard__infoMessage__ypUgN",
+        matchMetadataContainer:
+          ".SimpleMatchCard_simpleMatchCard__teamContent__8_4_T",
+        scoreSpanElement:
+          ".SimpleMatchCardTeam_simpleMatchCardTeam__score__NeZ2W",
+      };
+      const REG_LINK = /\/match\/(\d+)/;
+      const REG_MATCH_ID = /(\d{7,})/;
+      const FULL_TIME_TAG = "full time";
+      // ====
+
+      const phaseContainers = Array.from(
+        document.querySelectorAll(DOM_ELEMENTS_CLASSES.phaseContainer),
+      ).map((element) => {
+        const phaseTitle =
+          (
+            element.parentElement?.querySelector(
+              DOM_ELEMENTS_CLASSES.phaseTitle,
+            ) as HTMLHeadingElement
+          ).innerText ?? "Unkown Phase";
         return {
           phaseTitle,
           phaseContainer: element,
-        }
+        };
       });
 
       for (const phase of phaseContainers) {
-        const phaseMatches = phase.phaseContainer?.querySelectorAll<HTMLAnchorElement>('.MatchCard_matchCard__LynP5');
+        const phaseMatches =
+          phase.phaseContainer?.querySelectorAll<HTMLAnchorElement>(
+            DOM_ELEMENTS_CLASSES.phaseMatches,
+          );
         for (const phaseMatch of phaseMatches) {
           const href = phaseMatch.getAttribute("href") ?? "";
           const matchRef =
-            /\/match\/(\d+)/.exec(href)?.[1] ?? /(\d{7,})/.exec(href)?.[1] ?? "";
-          const liveComponent =
-            phaseMatch.querySelector(
-              ".SimpleMatchCard_simpleMatchCard__live__7ffkD",
-            ) as HTMLSpanElement;
-          const isLiveMatch = liveComponent !== null
-          const finalMatchContainer = phaseMatch.querySelector('.SimpleMatchCard_simpleMatchCard__infoMessage__ypUgN') as HTMLSpanElement;
-          const isFinalMatch = finalMatchContainer !== null && finalMatchContainer.innerText.toLowerCase() === "full time";
+            REG_LINK.exec(href)?.[1] ?? REG_MATCH_ID.exec(href)?.[1] ?? "";
+          const liveComponent = phaseMatch.querySelector(
+            DOM_ELEMENTS_CLASSES.liveComponent,
+          ) as HTMLSpanElement;
+          const isLiveMatch = liveComponent !== null;
+          const finalMatchContainer = phaseMatch.querySelector(
+            DOM_ELEMENTS_CLASSES.fullTimeTextElement,
+          ) as HTMLSpanElement;
+          const isFinalMatch =
+            finalMatchContainer !== null &&
+            finalMatchContainer.innerText.toLowerCase() === FULL_TIME_TAG;
           if (!matchRef) continue;
           const imgs = Array.from(phaseMatch.querySelectorAll("img[alt]"));
           const homeTeamName =
-            imgs[0]?.getAttribute("alt")?.trim().replace("Icon: ", "") ?? "";
+            imgs[0]
+              ?.getAttribute("alt")
+              ?.trim()
+              .replace(COUNTRY_ICON_TEXT, "") ?? "";
           const awayTeamName =
-            imgs[1]?.getAttribute("alt")?.trim().replace("Icon: ", "") ?? "";
+            imgs[1]
+              ?.getAttribute("alt")
+              ?.trim()
+              .replace(COUNTRY_ICON_TEXT, "") ?? "";
           const matchMetadata = phaseMatch.querySelectorAll(
-            ".SimpleMatchCard_simpleMatchCard__teamContent__8_4_T",
+            DOM_ELEMENTS_CLASSES.matchMetadataContainer,
           );
 
           let homeScore = "0";
@@ -350,12 +273,12 @@ async function scrapeVisibleLiveResults(
           if (matchMetadata) {
             homeScore = (
               matchMetadata[0].querySelector(
-                ".SimpleMatchCardTeam_simpleMatchCardTeam__score__NeZ2W",
+                DOM_ELEMENTS_CLASSES.scoreSpanElement,
               ) as HTMLSpanElement
             ).innerText;
             awayScore = (
               matchMetadata[1].querySelector(
-                ".SimpleMatchCardTeam_simpleMatchCardTeam__score__NeZ2W",
+                DOM_ELEMENTS_CLASSES.scoreSpanElement,
               ) as HTMLSpanElement
             ).innerText;
           }
@@ -367,44 +290,55 @@ async function scrapeVisibleLiveResults(
             timeEl?.textContent?.trim() ||
             "";
 
-          cards.push({
+          matches.push({
             matchRef,
             homeTeamName,
             awayTeamName,
             homeScore,
             awayScore,
-            statusText: isLiveMatch ? "live" : isFinalMatch ? "final" : "scheduled",
+            statusText: isLiveMatch
+              ? "live"
+              : isFinalMatch
+                ? "final"
+                : "scheduled",
             dateText,
             roundName: phase.phaseTitle,
           });
         }
       }
 
-      return cards;
+      return matches;
     });
 
-    const preparedGames = rawCards.map((game) => ({
-      ...game,
-      homeTeam: resolveTeamId(game.homeTeamName),
-      awayTeam: resolveTeamId(game.awayTeamName),
-    }))
+    console.log("[scraper] Processing the matches...");
+    const preparedMatches = rawMatches.map((match) => ({
+      ...match,
+      homeTeam: resolveTeamId(match.homeTeamName),
+      awayTeam: resolveTeamId(match.awayTeamName),
+    }));
 
-    const candidateLiveMatches = preparedGames.filter((match) => targetedLiveMatches.find((targetMatch) => targetMatch.homeTeamId === match.homeTeam && targetMatch.awayTeamId === match.awayTeam))
+    const candidateLiveMatches = preparedMatches.filter((match) =>
+      targetedLiveMatches.find(
+        (targetMatch) =>
+          targetMatch.homeTeamId === match.homeTeam &&
+          targetMatch.awayTeamId === match.awayTeam,
+      ),
+    );
+
     if (candidateLiveMatches.length <= 0) {
-      console.log('[scraper] No candidate games in live');
+      console.log("[scraper] No candidate games LIVE");
       return [];
     }
 
     const teamGroupMap = buildTeamGroupMap(TEAMS_META_PATH);
-    const matches = candidateLiveMatches
-    .map((card) => {
-      const match = mapCardToMatch(card, teamGroupMap);
-      if (!match) return null;
-      return addQualifiedTeam(match, card);
-    })
-    .filter((match): match is ScrapedMatch => match !== null);
-    
-    return selectLiveSyncCandidates(matches);
+    const toUpdateMatches = candidateLiveMatches
+      .map((card) => {
+        const match = mapCardToMatch(card, teamGroupMap);
+        if (!match) return null;
+        return addQualifiedTeam(match, card);
+      })
+      .filter((match): match is ScrapedMatch => match !== null);
+    return selectLiveSyncCandidates(toUpdateMatches);
   } finally {
     await context.close();
   }

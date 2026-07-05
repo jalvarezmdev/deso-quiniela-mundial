@@ -5,7 +5,6 @@ type SyncPolicyInput = {
   syncMode: ScrapeSyncMode;
   incomingStatus: MatchStatus | undefined;
   existingStatus: MatchStatus | null;
-  hasManualOverride: boolean;
 };
 
 export function isAuthorizedScrapeRequest(
@@ -21,8 +20,6 @@ export function parseScrapeSyncMode(value: unknown): ScrapeSyncMode {
 }
 
 export function shouldApplyIncomingMatch(input: SyncPolicyInput): boolean {
-  if (input.hasManualOverride) return false;
-
   if (input.syncMode === "live" && input.incomingStatus === "final") {
     return input.existingStatus === "live";
   }

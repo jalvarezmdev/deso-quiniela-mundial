@@ -170,14 +170,8 @@ serve(async (req) => {
         syncMode,
         incomingStatus: incomingMatch.status,
         existingStatus: existing?.status ?? null,
-        hasManualOverride: existing?.manual_override ?? false,
       })
     ) {
-      if (existing?.manual_override) {
-        skippedManualOverride += 1;
-      } else {
-        skippedFinalCandidate += 1;
-      }
       continue;
     }
 
