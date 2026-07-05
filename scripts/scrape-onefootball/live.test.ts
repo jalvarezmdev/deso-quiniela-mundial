@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs"
 import {
   deriveQualifiedTeamId,
   extractVisibleLiveMatchCardsFromDocument,
+  resolveVenezuelanKickoffAt,
   selectLiveSyncCandidates,
 } from "./live.ts"
 import type { ScrapedMatch } from "./types.ts"
@@ -145,6 +146,23 @@ describe("OneFootball live scraping", () => {
         cardText: "Argentina win on penalties",
       }),
     ).toBe("arg")
+  })
+
+  it("treats a Z datetime wall-clock as Venezuela time", () => {
+    expect(resolveVenezuelanKickoffAt("2026-07-04T17:00:00.000Z")).toBe(
+      "2026-07-04T21:00:00.000Z",
+    )
+  })
+
+  it("ignores non-Venezuela offsets and keeps the visible wall-clock time", () => {
+    expect(resolveVenezuelanKickoffAt("2026-07-04T17:00:00.000+02:00")).toBe(
+      "2026-07-04T21:00:00.000Z",
+    )
+  })
+
+  it("returns null for empty or invalid Venezuela kickoff input", () => {
+    expect(resolveVenezuelanKickoffAt("")).toBeNull()
+    expect(resolveVenezuelanKickoffAt("not a datetime")).toBeNull()
   })
 })
 

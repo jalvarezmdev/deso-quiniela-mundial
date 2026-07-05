@@ -329,7 +329,7 @@ export function mapCardToMatch(
     return null
   }
 
-  const { phase, groupName: roundGroup } = mapRoundToPhaseKey(card.roundName)
+  const { phase, groupName: roundGroup } = mapRoundToPhaseKey(card?.roundName ?? "")
   const groupName = resolveGroupName(homeTeamId, teamGroupMap)
 
   // Only assign group_name for group phase matches
@@ -465,7 +465,7 @@ async function sendToSupabase(matches: ScrapedMatch[]): Promise<void> {
 
   const result = (await response.json()) as Record<string, unknown>
   console.log(
-    `[send] ok=${result.ok} | inserted=${result.inserted} | updated=${result.updated} | skipped=${result.skippedManualOverride}`,
+    `[send] ok=${result.ok} | inserted=${result.inserted} | updated=${result.updated}`,
   )
 
   if (!result.ok) {

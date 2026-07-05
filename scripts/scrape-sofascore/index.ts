@@ -239,7 +239,7 @@ async function sendToSupabase(matches: ScrapedMatch[]): Promise<void> {
 
   const result = (await response.json()) as Record<string, unknown>
   console.log(
-    `[send] ok=${result.ok} | inserted=${result.inserted} | updated=${result.updated} | skipped=${result.skippedManualOverride}`,
+    `[send] ok=${result.ok} | inserted=${result.inserted} | updated=${result.updated}`,
   )
 
   if (!result.ok) {
