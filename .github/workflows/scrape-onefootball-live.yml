@@ -1,8 +1,6 @@
 name: Scrape OneFootball - Live Results
 
 on:
-  schedule:
-    - cron: '*/5 * * * *' # every 5 minutes
   workflow_dispatch: {} # manual trigger
 
 jobs:
