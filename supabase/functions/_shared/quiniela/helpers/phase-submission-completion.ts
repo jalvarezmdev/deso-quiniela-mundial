@@ -43,6 +43,7 @@ const ELIMINATION_SOURCE_ROWS: SourceEliminationRow[] = [
   { round: "Quarter-final", date: "2026-07-11", time: "20:00 UTC-5" },
   { round: "Semi-final", date: "2026-07-14", time: "14:00 UTC-5" },
   { round: "Semi-final", date: "2026-07-15", time: "15:00 UTC-4" },
+  { round: "3rd Place", date: "2026-07-18", time: "17:00 UTC-4"},
   { round: "Final", date: "2026-07-19", time: "15:00 UTC-4" },
 ];
 
@@ -51,6 +52,7 @@ function mapRoundToPhase(round: SourceEliminationRow["round"]): Exclude<PhaseKey
   if (round === "Round of 16") return "roundOf8";
   if (round === "Quarter-final") return "roundOf4";
   if (round === "Semi-final") return "semifinals";
+  if (round === "3rd Place") return "final";
   return "final";
 }
 
