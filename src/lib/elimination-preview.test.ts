@@ -21,12 +21,12 @@ function createRealMatch(input: Partial<Match> & Pick<Match, 'id' | 'phase' | 'k
 }
 
 describe('elimination preview slots', () => {
-  it('maps expected counts by phase and excludes third-place', () => {
+  it('maps expected counts by phase including third-place in final', () => {
     expect(getEliminationPreviewSlotsByPhase('roundOf16')).toHaveLength(16)
     expect(getEliminationPreviewSlotsByPhase('roundOf8')).toHaveLength(8)
     expect(getEliminationPreviewSlotsByPhase('roundOf4')).toHaveLength(4)
     expect(getEliminationPreviewSlotsByPhase('semifinals')).toHaveLength(2)
-    expect(getEliminationPreviewSlotsByPhase('final')).toHaveLength(1)
+    expect(getEliminationPreviewSlotsByPhase('final')).toHaveLength(2)
 
     const all = [
       ...getEliminationPreviewSlotsByPhase('roundOf16'),
@@ -36,7 +36,9 @@ describe('elimination preview slots', () => {
       ...getEliminationPreviewSlotsByPhase('final'),
     ]
 
-    expect(all.some((slot) => slot.team1Slot.startsWith('L'))).toBe(false)
+    const thirdPlaceSlot = all.find((slot) => slot.roundLabel === '3rd Place')
+    expect(thirdPlaceSlot?.team1Slot).toBe('L101')
+    expect(thirdPlaceSlot?.team2Slot).toBe('L102')
   })
 
   it('converts source date/time with utc offset into utc iso', () => {
@@ -64,6 +66,13 @@ describe('elimination preview slots', () => {
     if (result.views[0]?.kind === 'real') {
       expect(result.views[0].match.id).toBe('real-r32-1')
     }
+  })
+
+  it('propagates roundLabel for final phase views including 3rd place', () => {
+    const result = buildKnockoutMatchViews('final', [])
+    expect(result.views).toHaveLength(2)
+    expect(result.views[0]?.roundLabel).toBe('3rd Place')
+    expect(result.views[1]?.roundLabel).toBe('Final')
   })
 
   it('returns only real matches for non-knockout phases', () => {

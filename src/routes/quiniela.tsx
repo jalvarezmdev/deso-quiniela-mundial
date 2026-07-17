@@ -483,10 +483,11 @@ function QuinielaPage() {
     );
   }
 
-  function renderMatchCardStandalone(match: Match) {
+  function renderMatchCardStandalone(match: Match, is3rdPlace: boolean) {
     const home = getTeam(match.homeTeamId);
     const away = getTeam(match.awayTeamId);
     const prediction = predictionForMatch(match);
+    const matchPhaseLabel = is3rdPlace ? "3rd Place" : match.groupName ?? phaseLabel(match.phase);
 
     return (
       <Card
@@ -495,7 +496,7 @@ function QuinielaPage() {
       >
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            {match.groupName ?? phaseLabel(match.phase)}
+            {matchPhaseLabel}
           </p>
           <p className="text-sm text-zinc-400">
             {toVenDateTimeLabel(match.kickoffAt)}
@@ -532,9 +533,9 @@ function QuinielaPage() {
     );
   }
 
-  function renderKnockoutViewCard(view: QuinielaMatchView) {
+  function renderKnockoutViewCard(view: QuinielaMatchView, is3rdPlace: boolean) {
     if (view.kind === "real") {
-      return renderMatchCardStandalone(view.match);
+      return renderMatchCardStandalone(view.match, is3rdPlace);
     }
     if (view.kind === "previewAvailable") {
       return (
@@ -571,7 +572,7 @@ function QuinielaPage() {
       >
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            Eliminatoria
+            {view.roundLabel ?? "Eliminatoria"}
           </p>
           <p className="text-sm text-zinc-400">
             {toVenDateTimeLabel(view.slot.kickoffAt)}
@@ -779,7 +780,10 @@ function QuinielaPage() {
             </div>
           ) : (
             <section className="grid gap-3">
-              {knockoutViews.views.map((view) => renderKnockoutViewCard(view))}
+              {knockoutViews.views.map((view) => {
+                const is3rdPlace = view.roundLabel === "3rd Place";
+                return renderKnockoutViewCard(view, is3rdPlace);
+              })}
             </section>
           )}
 

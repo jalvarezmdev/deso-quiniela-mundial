@@ -7,11 +7,12 @@ type PhaseKey =
   | "final";
 
 type SourceEliminationRow = {
-  round: "Round of 32" | "Round of 16" | "Quarter-final" | "Semi-final" | "Final";
+  round: "Round of 32" | "Round of 16" | "Quarter-final" | "Semi-final" | "3rd Place" | "Final";
   date: string;
   time: string;
 };
 
+// IMPORTANT: Keep in sync with src/lib/elimination-preview.ts
 const ELIMINATION_SOURCE_ROWS: SourceEliminationRow[] = [
   { round: "Round of 32", date: "2026-06-28", time: "12:00 UTC-7" },
   { round: "Round of 32", date: "2026-06-29", time: "16:30 UTC-4" },

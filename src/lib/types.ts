@@ -39,6 +39,7 @@ export type Match = {
   manualOverride: boolean
   source?: string
   externalMatchRef?: string | null
+  round?: string;
 }
 
 export type Prediction = {

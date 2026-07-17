@@ -1,7 +1,7 @@
 import type { Match, PhaseKey } from "#/lib/types";
 
 type SourceEliminationRow = {
-  round: "Round of 32" | "Round of 16" | "Quarter-final" | "Semi-final" | "Final";
+  round: "Round of 32" | "Round of 16" | "Quarter-final" | "Semi-final" | "3rd Place" | "Final";
   date: string;
   time: string;
   team1: string;
@@ -13,13 +13,15 @@ export type EliminationPreviewSlot = {
   kickoffAt: string;
   team1Slot: string;
   team2Slot: string;
+  roundLabel: SourceEliminationRow["round"];
 };
 
 export type QuinielaMatchView =
-  | { kind: "real"; match: Match }
-  | { kind: "placeholder"; slot: EliminationPreviewSlot }
-  | { kind: "previewAvailable"; slot: EliminationPreviewSlot };
+  | { kind: "real"; match: Match; roundLabel?: string }
+  | { kind: "placeholder"; slot: EliminationPreviewSlot; roundLabel?: string }
+  | { kind: "previewAvailable"; slot: EliminationPreviewSlot; roundLabel?: string };
 
+// IMPORTANT: Keep in sync with supabase/functions/_shared/quiniela/helpers/phase-submission-completion.ts
 const ELIMINATION_SOURCE_ROWS: SourceEliminationRow[] = [
   { round: "Round of 32", date: "2026-06-28", time: "12:00 UTC-7", team1: "2A", team2: "2B" },
   { round: "Round of 32", date: "2026-06-29", time: "16:30 UTC-4", team1: "1E", team2: "3A/B/C/D/F" },
@@ -51,7 +53,7 @@ const ELIMINATION_SOURCE_ROWS: SourceEliminationRow[] = [
   { round: "Quarter-final", date: "2026-07-11", time: "20:00 UTC-5", team1: "W95", team2: "W96" },
   { round: "Semi-final", date: "2026-07-14", time: "14:00 UTC-5", team1: "W97", team2: "W98" },
   { round: "Semi-final", date: "2026-07-15", time: "15:00 UTC-4", team1: "W99", team2: "W100" },
-  { round: "3rd Place", date: "2026-07-18", time: "17:00 UTC-4", team1: "W97", team2: "W99" },
+  { round: "3rd Place", date: "2026-07-18", time: "17:00 UTC-4", team1: "L101", team2: "L102" },
   { round: "Final", date: "2026-07-19", time: "15:00 UTC-4", team1: "W101", team2: "W102" },
 ];
 
@@ -88,6 +90,7 @@ const ELIMINATION_SLOTS: EliminationPreviewSlot[] = ELIMINATION_SOURCE_ROWS.map(
   kickoffAt: parseKickoffAtToIso(row.date, row.time),
   team1Slot: row.team1,
   team2Slot: row.team2,
+  roundLabel: row.round,
 }));
 
 function byKickoffAsc(a: { kickoffAt: string }, b: { kickoffAt: string }): number {
@@ -143,9 +146,9 @@ export function buildKnockoutMatchViews(
   const views = slots.map((slot) => {
     const real = realByKey.get(phaseKickoffKey(phase, slot.kickoffAt));
     if (real) {
-      return { kind: "real", match: real } as const;
+      return { kind: "real", match: real, roundLabel: slot.roundLabel } as const;
     }
-    return { kind: "placeholder", slot } as const;
+    return { kind: "placeholder", slot, roundLabel: slot.roundLabel } as const;
   });
 
   const viewsWithPreview = previewEnabled
@@ -154,7 +157,7 @@ export function buildKnockoutMatchViews(
         if (firstPlaceholderIndex < 0) return views;
         return views.map((item, index) =>
           index === firstPlaceholderIndex && item.kind === "placeholder"
-            ? { kind: "previewAvailable", slot: item.slot }
+            ? { kind: "previewAvailable", slot: item.slot, roundLabel: item.roundLabel } as const
             : item,
         );
       })()
